@@ -1,0 +1,316 @@
+%% api_resource_map.mmd
+%% MANGROVE-EYE MVP API Resource Map
+%% Scope:
+%% - REST API resource grouping for Laravel backend
+%% - Frontend-to-API mapping for React + React Leaflet dashboard
+%% - Public vs internal API separation
+%% - Auth, RBAC, AOI, analysis run, GEE import, hotspot, validation, report, user, audit
+%% - No U-Net API, no Sentinel-1 API, no scheduler API, no notification API in MVP
+
+flowchart LR
+
+    %% =========================
+    %% FRONTEND AREAS
+    %% =========================
+    subgraph FE["Frontend Areas - React"]
+        FE_PUBLIC["Public Dashboard<br/>generalized WebGIS"]
+        FE_INTERNAL["Internal WebGIS Dashboard<br/>map-first dashboard"]
+        FE_ADMIN["Admin Management UI<br/>AOI, analysis, import, users"]
+        FE_VALIDATOR["Validator UI<br/>field validation"]
+        FE_NGO["NGO / Advocate UI<br/>validation review + PDF"]
+        FE_AUTH["Auth Pages<br/>login, logout, current user"]
+    end
+
+    %% =========================
+    %% API ENTRY
+    %% =========================
+    subgraph API_ENTRY["API Entry Layer"]
+        API_BASE["Base Path<br/>/api/v1"]
+        PUBLIC_API["Public API<br/>/api/v1/public"]
+        INTERNAL_API["Internal API<br/>/api/v1"]
+        AUTH_MW["Auth Middleware<br/>authenticated routes"]
+        RBAC_MW["RBAC Middleware<br/>role / permission check"]
+        RESPONSE_FORMAT["Standard API Response<br/>success, message, data, meta, errors"]
+    end
+
+    %% =========================
+    %% API RESOURCE GROUPS
+    %% =========================
+    subgraph AUTH_API["Auth API"]
+        AUTH_LOGIN["POST /auth/login"]
+        AUTH_LOGOUT["POST /auth/logout"]
+        AUTH_ME["GET /auth/me"]
+    end
+
+    subgraph PUBLIC_DASHBOARD_API["Public Dashboard API"]
+        PUB_SUMMARY["GET /public/dashboard/summary"]
+        PUB_HOTSPOTS["GET /public/hotspots<br/>generalized location only"]
+    end
+
+    subgraph DASHBOARD_API["Internal Dashboard API"]
+        DASH_SUMMARY["GET /dashboard/summary"]
+        DASH_LAYERS["GET /dashboard/layers"]
+    end
+
+    subgraph AOI_API["AOI API"]
+        AOI_LIST["GET /aoi-areas"]
+        AOI_DETAIL["GET /aoi-areas/{id}"]
+        AOI_CREATE["POST /aoi-areas"]
+        AOI_UPDATE["PUT /aoi-areas/{id}"]
+        AOI_DELETE["DELETE /aoi-areas/{id}"]
+        AOI_IMPORT["POST /aoi-areas/import<br/>GeoJSON upload"]
+    end
+
+    subgraph ANALYSIS_API["Analysis Run API"]
+        RUN_LIST["GET /analysis-runs"]
+        RUN_DETAIL["GET /analysis-runs/{id}"]
+        RUN_CREATE["POST /analysis-runs"]
+        RUN_UPDATE["PUT /analysis-runs/{id}"]
+        RUN_DELETE["DELETE /analysis-runs/{id}"]
+    end
+
+    subgraph GEE_API["GEE Import & Layer API"]
+        GEE_IMPORT["POST /analysis-runs/{id}/gee-imports/hotspots<br/>import hotspot GeoJSON"]
+        GEE_IMPORT_LIST["GET /analysis-runs/{id}/gee-imports"]
+        LAYER_CREATE["POST /analysis-runs/{id}/satellite-layers"]
+    end
+
+    subgraph HOTSPOT_API["Hotspot API"]
+        HOTSPOT_LIST["GET /hotspots<br/>json or geojson"]
+        HOTSPOT_DETAIL["GET /hotspots/{id}"]
+        HOTSPOT_STATUS["PATCH /hotspots/{id}/status"]
+        HOTSPOT_PRIORITY["PATCH /hotspots/{id}/priority"]
+    end
+
+    subgraph VALIDATION_API["Field Validation API"]
+        VALIDATION_CREATE["POST /hotspots/{id}/field-validations"]
+        VALIDATION_LIST["GET /hotspots/{id}/field-validations"]
+        VALIDATION_UPDATE["PUT /field-validations/{id}"]
+        PHOTO_UPLOAD["POST /field-validations/{id}/photos"]
+    end
+
+    subgraph REPORT_API["Report API"]
+        REPORT_HOTSPOT_CREATE["POST /hotspots/{id}/reports"]
+        REPORT_ANALYSIS_CREATE["POST /analysis-runs/{id}/reports<br/>optional MVP"]
+        REPORT_LIST["GET /reports"]
+        REPORT_DOWNLOAD["GET /reports/{id}/download"]
+    end
+
+    subgraph USER_API["User & Role API"]
+        USER_LIST["GET /users"]
+        USER_CREATE["POST /users"]
+        USER_ROLES_UPDATE["PATCH /users/{id}/roles"]
+        ROLE_LIST["GET /roles"]
+    end
+
+    subgraph AUDIT_API["Audit Log API"]
+        AUDIT_LIST["GET /audit-logs"]
+    end
+
+    %% =========================
+    %% DATABASE RESOURCE GROUPS
+    %% =========================
+    subgraph DB["PostgreSQL + PostGIS Tables"]
+        DB_USERS[("users<br/>roles<br/>permissions")]
+        DB_AOI[("aoi_areas")]
+        DB_RUNS[("analysis_runs")]
+        DB_IMPORTS[("gee_imports")]
+        DB_LAYERS[("satellite_layers")]
+        DB_HOTSPOTS[("hotspots")]
+        DB_VALIDATIONS[("field_validations")]
+        DB_PHOTOS[("validation_photos")]
+        DB_REPORTS[("reports")]
+        DB_AUDIT[("audit_logs")]
+    end
+
+    %% =========================
+    %% STORAGE
+    %% =========================
+    subgraph STORAGE["Private File Storage"]
+        STORAGE_AOI["AOI files<br/>GeoJSON / Shapefile"]
+        STORAGE_GEE["GEE exports<br/>GeoJSON / static map / optional tile metadata"]
+        STORAGE_PHOTOS["Validation photos"]
+        STORAGE_REPORTS["PDF reports"]
+    end
+
+    %% =========================
+    %% FRONTEND TO API ENTRY
+    %% =========================
+    FE_AUTH --> API_BASE
+    FE_PUBLIC --> PUBLIC_API
+    FE_INTERNAL --> INTERNAL_API
+    FE_ADMIN --> INTERNAL_API
+    FE_VALIDATOR --> INTERNAL_API
+    FE_NGO --> INTERNAL_API
+
+    API_BASE --> RESPONSE_FORMAT
+    PUBLIC_API --> RESPONSE_FORMAT
+    INTERNAL_API --> AUTH_MW
+    AUTH_MW --> RBAC_MW
+    RBAC_MW --> RESPONSE_FORMAT
+
+    %% =========================
+    %% AUTH ROUTING
+    %% =========================
+    FE_AUTH --> AUTH_LOGIN
+    FE_AUTH --> AUTH_LOGOUT
+    FE_AUTH --> AUTH_ME
+
+    AUTH_LOGIN --> DB_USERS
+    AUTH_LOGOUT --> DB_USERS
+    AUTH_ME --> DB_USERS
+
+    %% =========================
+    %% PUBLIC API ROUTING
+    %% =========================
+    FE_PUBLIC --> PUB_SUMMARY
+    FE_PUBLIC --> PUB_HOTSPOTS
+
+    PUB_SUMMARY --> DB_RUNS
+    PUB_SUMMARY --> DB_HOTSPOTS
+    PUB_HOTSPOTS --> DB_HOTSPOTS
+
+    PUB_HOTSPOTS -. "redact precise geometry<br/>return generalized point only" .-> FE_PUBLIC
+
+    %% =========================
+    %% INTERNAL DASHBOARD ROUTING
+    %% =========================
+    FE_INTERNAL --> DASH_SUMMARY
+    FE_INTERNAL --> DASH_LAYERS
+    FE_INTERNAL --> HOTSPOT_LIST
+    FE_INTERNAL --> HOTSPOT_DETAIL
+    FE_INTERNAL --> AOI_LIST
+    FE_INTERNAL --> RUN_LIST
+
+    DASH_SUMMARY --> DB_RUNS
+    DASH_SUMMARY --> DB_HOTSPOTS
+    DASH_LAYERS --> DB_LAYERS
+
+    %% =========================
+    %% ADMIN API ROUTING
+    %% =========================
+    FE_ADMIN --> AOI_LIST
+    FE_ADMIN --> AOI_DETAIL
+    FE_ADMIN --> AOI_CREATE
+    FE_ADMIN --> AOI_UPDATE
+    FE_ADMIN --> AOI_DELETE
+    FE_ADMIN --> AOI_IMPORT
+
+    FE_ADMIN --> RUN_LIST
+    FE_ADMIN --> RUN_DETAIL
+    FE_ADMIN --> RUN_CREATE
+    FE_ADMIN --> RUN_UPDATE
+    FE_ADMIN --> RUN_DELETE
+
+    FE_ADMIN --> GEE_IMPORT
+    FE_ADMIN --> GEE_IMPORT_LIST
+    FE_ADMIN --> LAYER_CREATE
+
+    FE_ADMIN --> HOTSPOT_STATUS
+    FE_ADMIN --> HOTSPOT_PRIORITY
+
+    FE_ADMIN --> USER_LIST
+    FE_ADMIN --> USER_CREATE
+    FE_ADMIN --> USER_ROLES_UPDATE
+    FE_ADMIN --> ROLE_LIST
+    FE_ADMIN --> AUDIT_LIST
+
+    AOI_LIST --> DB_AOI
+    AOI_DETAIL --> DB_AOI
+    AOI_CREATE --> DB_AOI
+    AOI_UPDATE --> DB_AOI
+    AOI_DELETE --> DB_AOI
+    AOI_IMPORT --> DB_AOI
+    AOI_IMPORT --> STORAGE_AOI
+
+    RUN_LIST --> DB_RUNS
+    RUN_DETAIL --> DB_RUNS
+    RUN_CREATE --> DB_RUNS
+    RUN_UPDATE --> DB_RUNS
+    RUN_DELETE --> DB_RUNS
+
+    GEE_IMPORT --> DB_IMPORTS
+    GEE_IMPORT --> DB_HOTSPOTS
+    GEE_IMPORT --> STORAGE_GEE
+    GEE_IMPORT_LIST --> DB_IMPORTS
+
+    LAYER_CREATE --> DB_LAYERS
+    LAYER_CREATE --> STORAGE_GEE
+
+    HOTSPOT_STATUS --> DB_HOTSPOTS
+    HOTSPOT_PRIORITY --> DB_HOTSPOTS
+
+    USER_LIST --> DB_USERS
+    USER_CREATE --> DB_USERS
+    USER_ROLES_UPDATE --> DB_USERS
+    ROLE_LIST --> DB_USERS
+    AUDIT_LIST --> DB_AUDIT
+
+    %% =========================
+    %% VALIDATOR API ROUTING
+    %% =========================
+    FE_VALIDATOR --> HOTSPOT_LIST
+    FE_VALIDATOR --> HOTSPOT_DETAIL
+    FE_VALIDATOR --> VALIDATION_CREATE
+    FE_VALIDATOR --> VALIDATION_LIST
+    FE_VALIDATOR --> VALIDATION_UPDATE
+    FE_VALIDATOR --> PHOTO_UPLOAD
+
+    HOTSPOT_LIST --> DB_HOTSPOTS
+    HOTSPOT_DETAIL --> DB_HOTSPOTS
+
+    VALIDATION_CREATE --> DB_VALIDATIONS
+    VALIDATION_CREATE --> DB_HOTSPOTS
+    VALIDATION_LIST --> DB_VALIDATIONS
+    VALIDATION_UPDATE --> DB_VALIDATIONS
+    VALIDATION_UPDATE --> DB_HOTSPOTS
+
+    PHOTO_UPLOAD --> DB_PHOTOS
+    PHOTO_UPLOAD --> STORAGE_PHOTOS
+
+    %% =========================
+    %% NGO / REPORT ROUTING
+    %% =========================
+    FE_NGO --> HOTSPOT_LIST
+    FE_NGO --> HOTSPOT_DETAIL
+    FE_NGO --> VALIDATION_LIST
+    FE_NGO --> REPORT_HOTSPOT_CREATE
+    FE_NGO --> REPORT_LIST
+    FE_NGO --> REPORT_DOWNLOAD
+
+    REPORT_HOTSPOT_CREATE --> DB_REPORTS
+    REPORT_HOTSPOT_CREATE --> DB_HOTSPOTS
+    REPORT_HOTSPOT_CREATE --> DB_VALIDATIONS
+    REPORT_HOTSPOT_CREATE --> STORAGE_REPORTS
+
+    REPORT_ANALYSIS_CREATE --> DB_REPORTS
+    REPORT_ANALYSIS_CREATE --> DB_RUNS
+    REPORT_ANALYSIS_CREATE --> STORAGE_REPORTS
+
+    REPORT_LIST --> DB_REPORTS
+    REPORT_DOWNLOAD --> DB_REPORTS
+    REPORT_DOWNLOAD --> STORAGE_REPORTS
+
+    %% =========================
+    %% RBAC PROTECTION BY RESOURCE
+    %% =========================
+    RBAC_MW -. "public_viewer:<br/>public endpoints only" .-> PUBLIC_DASHBOARD_API
+    RBAC_MW -. "validator:<br/>hotspot detail + validation" .-> VALIDATION_API
+    RBAC_MW -. "ngo_advocate:<br/>validated data + reports" .-> REPORT_API
+    RBAC_MW -. "admin:<br/>AOI, analysis, import, users" .-> AOI_API
+    RBAC_MW -. "admin:<br/>analysis and GEE import" .-> GEE_API
+    RBAC_MW -. "super_admin:<br/>full MVP access" .-> USER_API
+
+    %% =========================
+    %% AUDITABLE ACTIONS
+    %% =========================
+    AOI_CREATE -. "audit" .-> DB_AUDIT
+    AOI_IMPORT -. "audit" .-> DB_AUDIT
+    RUN_CREATE -. "audit" .-> DB_AUDIT
+    GEE_IMPORT -. "audit" .-> DB_AUDIT
+    HOTSPOT_STATUS -. "audit" .-> DB_AUDIT
+    VALIDATION_CREATE -. "audit" .-> DB_AUDIT
+    PHOTO_UPLOAD -. "audit" .-> DB_AUDIT
+    REPORT_HOTSPOT_CREATE -. "audit" .-> DB_AUDIT
+    REPORT_DOWNLOAD -. "audit" .-> DB_AUDIT
+    USER_ROLES_UPDATE -. "audit" .-> DB_AUDIT

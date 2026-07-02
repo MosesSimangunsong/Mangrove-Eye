@@ -1,0 +1,204 @@
+%% module_map.mmd
+%% MANGROVE-EYE MVP Module Map
+%% Scope:
+%% - Internal application module boundaries for Laravel + React MVP
+%% - Focus on AOI, Analysis Run, GEE Import, Hotspot, WebGIS, Validation, Report, RBAC
+%% - No U-Net production module, no Sentinel-1 module, no scheduler, no notification module in MVP
+
+flowchart TB
+
+    %% =========================
+    %% FRONTEND MODULES
+    %% =========================
+    subgraph FE["Frontend Modules - React"]
+        FE_APP["App Shell<br/>Top Bar + Layout + Protected Routes"]
+        FE_PUBLIC["Public Dashboard<br/>Generalized WebGIS View"]
+        FE_INTERNAL["Internal WebGIS Dashboard<br/>Map-first dashboard"]
+        FE_ADMIN["Admin Management UI<br/>AOI + Analysis Run + Import + Users"]
+        FE_MAP["Map Components<br/>React Leaflet<br/>AOI Layer + Hotspot Layer + Popup"]
+        FE_FILTER["Filter & Layer Control<br/>Analysis Run, AOI, status, priority"]
+        FE_DRAWER["Hotspot Detail Drawer<br/>Index summary + validation + report action"]
+        FE_VALIDATION["Field Validation UI<br/>status, note, coordinate, photo upload"]
+        FE_REPORT["Report UI<br/>generate + download PDF"]
+        FE_MOTION["Motion Components<br/>subtle panel reveal + skeleton + pulse marker"]
+    end
+
+    %% =========================
+    %% BACKEND MODULES
+    %% =========================
+    subgraph BE["Backend Modules - Laravel"]
+        BE_AUTH["Auth Module<br/>login, logout, current user"]
+        BE_RBAC["RBAC Module<br/>roles, permissions, access control"]
+        BE_AOI["AOI Module<br/>GeoJSON import, AOI metadata, PostGIS geometry"]
+        BE_ANALYSIS["Analysis Run Module<br/>before-after period, parameters, status"]
+        BE_GEE["GEE Import Module<br/>import hotspot GeoJSON, parse features"]
+        BE_LAYER["Satellite Layer Module<br/>static map, optional tile metadata"]
+        BE_HOTSPOT["Hotspot Module<br/>spatial query, detail, status, priority"]
+        BE_DASHBOARD["Dashboard Summary Module<br/>metrics, filters, map data"]
+        BE_VALIDATION["Field Validation Module<br/>validation status, notes, point"]
+        BE_PHOTO["Validation Photo Module<br/>upload, metadata, protected access"]
+        BE_REPORT["Report Module<br/>PDF generation + report metadata"]
+        BE_FILE["File Storage Module<br/>private files, protected download"]
+        BE_AUDIT["Audit Log Module<br/>sensitive activity tracking"]
+    end
+
+    %% =========================
+    %% DATABASE TABLE GROUPS
+    %% =========================
+    subgraph DB["Database Modules - PostgreSQL/PostGIS"]
+        DB_USERS[("users<br/>roles<br/>permissions")]
+        DB_AOI[("aoi_areas<br/>MultiPolygon SRID 4326")]
+        DB_ANALYSIS[("analysis_runs")]
+        DB_IMPORTS[("gee_imports")]
+        DB_LAYERS[("satellite_layers")]
+        DB_HOTSPOTS[("hotspots<br/>Point + MultiPolygon")]
+        DB_VALIDATIONS[("field_validations")]
+        DB_PHOTOS[("validation_photos")]
+        DB_REPORTS[("reports")]
+        DB_AUDIT[("audit_logs")]
+    end
+
+    %% =========================
+    %% EXTERNAL / SUPPORTING SERVICES
+    %% =========================
+    subgraph EXT["External / Supporting Services"]
+        EXT_GEE["Google Earth Engine<br/>Sentinel-2 + MVI/CMRI processing"]
+        EXT_STORAGE["Private File Storage<br/>AOI files, GEE exports, photos, reports"]
+        EXT_PDF["PDF Engine<br/>DomPDF / Browsershot / Snappy"]
+    end
+
+    %% =========================
+    %% FRONTEND DEPENDENCIES
+    %% =========================
+    FE_APP --> FE_PUBLIC
+    FE_APP --> FE_INTERNAL
+    FE_APP --> FE_ADMIN
+
+    FE_PUBLIC --> FE_MAP
+    FE_PUBLIC --> FE_FILTER
+
+    FE_INTERNAL --> FE_MAP
+    FE_INTERNAL --> FE_FILTER
+    FE_INTERNAL --> FE_DRAWER
+
+    FE_ADMIN --> FE_FILTER
+    FE_ADMIN --> FE_REPORT
+
+    FE_DRAWER --> FE_VALIDATION
+    FE_DRAWER --> FE_REPORT
+
+    FE_MOTION --> FE_PUBLIC
+    FE_MOTION --> FE_INTERNAL
+    FE_MOTION --> FE_DRAWER
+    FE_MOTION --> FE_VALIDATION
+    FE_MOTION --> FE_REPORT
+
+    %% =========================
+    %% FRONTEND TO BACKEND MODULES
+    %% =========================
+    FE_APP --> BE_AUTH
+    FE_APP --> BE_RBAC
+
+    FE_PUBLIC --> BE_DASHBOARD
+    FE_PUBLIC --> BE_HOTSPOT
+
+    FE_INTERNAL --> BE_DASHBOARD
+    FE_INTERNAL --> BE_AOI
+    FE_INTERNAL --> BE_ANALYSIS
+    FE_INTERNAL --> BE_HOTSPOT
+    FE_INTERNAL --> BE_LAYER
+
+    FE_ADMIN --> BE_AOI
+    FE_ADMIN --> BE_ANALYSIS
+    FE_ADMIN --> BE_GEE
+    FE_ADMIN --> BE_RBAC
+    FE_ADMIN --> BE_AUDIT
+
+    FE_MAP --> BE_AOI
+    FE_MAP --> BE_HOTSPOT
+    FE_MAP --> BE_LAYER
+
+    FE_FILTER --> BE_DASHBOARD
+    FE_FILTER --> BE_ANALYSIS
+    FE_FILTER --> BE_HOTSPOT
+
+    FE_DRAWER --> BE_HOTSPOT
+    FE_DRAWER --> BE_VALIDATION
+    FE_DRAWER --> BE_REPORT
+
+    FE_VALIDATION --> BE_VALIDATION
+    FE_VALIDATION --> BE_PHOTO
+
+    FE_REPORT --> BE_REPORT
+
+    %% =========================
+    %% BACKEND MODULE RELATIONS
+    %% =========================
+    BE_AUTH --> BE_RBAC
+
+    BE_AOI --> BE_ANALYSIS
+    BE_ANALYSIS --> BE_GEE
+    BE_GEE --> BE_HOTSPOT
+    BE_GEE --> BE_LAYER
+
+    BE_HOTSPOT --> BE_DASHBOARD
+    BE_HOTSPOT --> BE_VALIDATION
+    BE_VALIDATION --> BE_PHOTO
+    BE_HOTSPOT --> BE_REPORT
+    BE_VALIDATION --> BE_REPORT
+
+    BE_REPORT --> BE_FILE
+    BE_PHOTO --> BE_FILE
+    BE_AOI --> BE_FILE
+    BE_GEE --> BE_FILE
+    BE_LAYER --> BE_FILE
+
+    BE_AOI --> BE_AUDIT
+    BE_GEE --> BE_AUDIT
+    BE_HOTSPOT --> BE_AUDIT
+    BE_VALIDATION --> BE_AUDIT
+    BE_REPORT --> BE_AUDIT
+    BE_RBAC --> BE_AUDIT
+
+    %% =========================
+    %% BACKEND TO DATABASE
+    %% =========================
+    BE_AUTH --> DB_USERS
+    BE_RBAC --> DB_USERS
+
+    BE_AOI --> DB_AOI
+    BE_ANALYSIS --> DB_ANALYSIS
+    BE_GEE --> DB_IMPORTS
+    BE_GEE --> DB_HOTSPOTS
+    BE_LAYER --> DB_LAYERS
+
+    BE_HOTSPOT --> DB_HOTSPOTS
+    BE_DASHBOARD --> DB_HOTSPOTS
+    BE_DASHBOARD --> DB_ANALYSIS
+    BE_DASHBOARD --> DB_LAYERS
+
+    BE_VALIDATION --> DB_VALIDATIONS
+    BE_VALIDATION --> DB_HOTSPOTS
+    BE_PHOTO --> DB_PHOTOS
+
+    BE_REPORT --> DB_REPORTS
+    BE_REPORT --> DB_HOTSPOTS
+    BE_REPORT --> DB_VALIDATIONS
+
+    BE_AUDIT --> DB_AUDIT
+
+    %% =========================
+    %% EXTERNAL RELATIONS
+    %% =========================
+    EXT_GEE -. "manual / semi-manual export<br/>GeoJSON, static image, optional tile URL" .-> BE_GEE
+
+    BE_FILE --> EXT_STORAGE
+    BE_REPORT --> EXT_PDF
+    EXT_PDF --> EXT_STORAGE
+
+    %% =========================
+    %% ACCESS BOUNDARIES
+    %% =========================
+    BE_RBAC -. "Public access:<br/>generalized data only" .-> BE_DASHBOARD
+    BE_RBAC -. "Internal access:<br/>precise geometry based on permission" .-> BE_HOTSPOT
+    BE_RBAC -. "Protected files:<br/>photos and PDF reports" .-> BE_FILE

@@ -1,0 +1,217 @@
+%% rbac_access_flow.mmd
+%% MANGROVE-EYE MVP RBAC and Sensitive Data Access Flow
+%% Scope:
+%% - Public vs internal access
+%% - Role-based API response filtering
+%% - Sensitive geospatial data protection
+%% - Coordinates, conflict polygons, validation photos, notes, PDF reports, raw GeoJSON
+%% - No legal case management, no external government integration, no notification system in MVP
+
+flowchart TB
+
+    %% =========================
+    %% REQUEST ENTRY
+    %% =========================
+    START["Incoming Request"] --> REQUEST_TYPE{"Request target?"}
+
+    REQUEST_TYPE --> PUBLIC_ROUTE["Public API Route<br/>/api/v1/public/..."]
+    REQUEST_TYPE --> INTERNAL_ROUTE["Internal API Route<br/>/api/v1/..."]
+    REQUEST_TYPE --> FILE_ROUTE["Protected File Route<br/>photos / PDF / static maps"]
+    REQUEST_TYPE --> ADMIN_ROUTE["Admin Management Route<br/>AOI / analysis / import / users / audit"]
+
+    %% =========================
+    %% PUBLIC ACCESS FLOW
+    %% =========================
+    subgraph PUBLIC_ACCESS["Public Access Flow"]
+        PUBLIC_ROUTE --> PUBLIC_ALLOWED{"Is endpoint public-safe?"}
+
+        PUBLIC_ALLOWED -->|No| PUBLIC_FORBIDDEN["Return 403 Forbidden"]
+        PUBLIC_ALLOWED -->|Yes| PUBLIC_DATA_FILTER["Apply Public Data Filter"]
+
+        PUBLIC_DATA_FILTER --> REMOVE_PRECISE_COORDS["Remove precise coordinates"]
+        PUBLIC_DATA_FILTER --> REMOVE_POLYGON["Remove detailed hotspot/conflict polygon"]
+        PUBLIC_DATA_FILTER --> REMOVE_PHOTOS["Remove validation photos"]
+        PUBLIC_DATA_FILTER --> REMOVE_NOTES["Remove validator notes"]
+        PUBLIC_DATA_FILTER --> REMOVE_REPORTS["Remove internal PDF reports"]
+        PUBLIC_DATA_FILTER --> REMOVE_RAW_GEOJSON["Remove raw sensitive GeoJSON"]
+
+        REMOVE_PRECISE_COORDS --> GENERALIZE_LOCATION["Generate generalized location<br/>rounded point / coarse area"]
+        REMOVE_POLYGON --> PUBLIC_SUMMARY_ONLY["Return summary-only spatial data"]
+        REMOVE_PHOTOS --> PUBLIC_RESPONSE_BUILD
+        REMOVE_NOTES --> PUBLIC_RESPONSE_BUILD
+        REMOVE_REPORTS --> PUBLIC_RESPONSE_BUILD
+        REMOVE_RAW_GEOJSON --> PUBLIC_RESPONSE_BUILD
+        GENERALIZE_LOCATION --> PUBLIC_RESPONSE_BUILD
+        PUBLIC_SUMMARY_ONLY --> PUBLIC_RESPONSE_BUILD
+
+        PUBLIC_RESPONSE_BUILD["Build public response<br/>generalized hotspot, priority, status, area estimate, disclaimer"] --> PUBLIC_RESPONSE["Return 200 Public Response"]
+    end
+
+    %% =========================
+    %% INTERNAL AUTH FLOW
+    %% =========================
+    subgraph INTERNAL_ACCESS["Internal Access Flow"]
+        INTERNAL_ROUTE --> AUTH_REQUIRED["Check authentication"]
+        FILE_ROUTE --> AUTH_REQUIRED
+        ADMIN_ROUTE --> AUTH_REQUIRED
+
+        AUTH_REQUIRED --> AUTH_VALID{"Authenticated?"}
+        AUTH_VALID -->|No| UNAUTHENTICATED["Return 401 Unauthenticated"]
+        AUTH_VALID -->|Yes| LOAD_USER["Load user roles and permissions"]
+
+        LOAD_USER --> ROLE_CHECK{"Role / permission?"}
+
+        ROLE_CHECK -->|public_viewer only| INTERNAL_DENIED["Return 403 Forbidden<br/>public user cannot access internal route"]
+        ROLE_CHECK -->|validator| VALIDATOR_POLICY["Apply Validator Policy"]
+        ROLE_CHECK -->|ngo_advocate| NGO_POLICY["Apply NGO / Advocate Policy"]
+        ROLE_CHECK -->|admin| ADMIN_POLICY["Apply Admin Policy"]
+        ROLE_CHECK -->|super_admin| SUPERADMIN_POLICY["Apply Super Admin Policy"]
+    end
+
+    %% =========================
+    %% VALIDATOR POLICY
+    %% =========================
+    subgraph VALIDATOR_ACCESS["Validator Access Rules"]
+        VALIDATOR_POLICY --> VAL_REQUEST{"Requested data?"}
+
+        VAL_REQUEST -->|Dashboard / hotspot detail| VAL_HOTSPOT_DETAIL["Allow precise hotspot access<br/>centroid + geom + index summary"]
+        VAL_REQUEST -->|Field validation| VAL_VALIDATION_WRITE["Allow create/update own validation<br/>status, note, point, photo"]
+        VAL_REQUEST -->|Validation photos| VAL_PHOTO_ACCESS["Allow upload/read validation photos<br/>based on permission"]
+        VAL_REQUEST -->|Reports| VAL_REPORT_DENIED["Deny report generation/download unless explicitly permitted"]
+        VAL_REQUEST -->|User/admin/audit| VAL_ADMIN_DENIED["Deny admin-only resources"]
+
+        VAL_HOTSPOT_DETAIL --> INTERNAL_RESPONSE
+        VAL_VALIDATION_WRITE --> INTERNAL_RESPONSE
+        VAL_PHOTO_ACCESS --> FILE_RESPONSE
+        VAL_REPORT_DENIED --> FORBIDDEN
+        VAL_ADMIN_DENIED --> FORBIDDEN
+    end
+
+    %% =========================
+    %% NGO POLICY
+    %% =========================
+    subgraph NGO_ACCESS["NGO / Advocate Access Rules"]
+        NGO_POLICY --> NGO_REQUEST{"Requested data?"}
+
+        NGO_REQUEST -->|Dashboard / hotspot detail| NGO_HOTSPOT_DETAIL["Allow hotspot detail<br/>precise data if permitted"]
+        NGO_REQUEST -->|Validation results| NGO_VALIDATION_READ["Allow read validation notes/photos<br/>for advocacy use"]
+        NGO_REQUEST -->|PDF report| NGO_REPORT_ACCESS["Allow generate/download PDF report<br/>with disclaimer"]
+        NGO_REQUEST -->|AOI / analysis read| NGO_ANALYSIS_READ["Allow read published analysis data"]
+        NGO_REQUEST -->|Import/manage users/audit| NGO_ADMIN_DENIED["Deny admin-only operations"]
+
+        NGO_HOTSPOT_DETAIL --> INTERNAL_RESPONSE
+        NGO_VALIDATION_READ --> INTERNAL_RESPONSE
+        NGO_REPORT_ACCESS --> FILE_RESPONSE
+        NGO_ANALYSIS_READ --> INTERNAL_RESPONSE
+        NGO_ADMIN_DENIED --> FORBIDDEN
+    end
+
+    %% =========================
+    %% ADMIN POLICY
+    %% =========================
+    subgraph ADMIN_ACCESS["Admin Access Rules"]
+        ADMIN_POLICY --> ADMIN_REQUEST{"Requested data?"}
+
+        ADMIN_REQUEST -->|AOI management| ADMIN_AOI["Allow create/update/import AOI"]
+        ADMIN_REQUEST -->|Analysis run| ADMIN_ANALYSIS["Allow create/update/publish analysis run"]
+        ADMIN_REQUEST -->|GEE import| ADMIN_GEE_IMPORT["Allow import hotspot GeoJSON"]
+        ADMIN_REQUEST -->|Hotspot management| ADMIN_HOTSPOT["Allow update hotspot status/priority"]
+        ADMIN_REQUEST -->|Validation and photos| ADMIN_VALIDATION["Allow read/manage validation data"]
+        ADMIN_REQUEST -->|Reports| ADMIN_REPORT["Allow generate/download PDF"]
+        ADMIN_REQUEST -->|Users and roles| ADMIN_USERS["Allow user management within admin scope"]
+        ADMIN_REQUEST -->|Audit log| ADMIN_AUDIT["Allow read audit log"]
+
+        ADMIN_AOI --> INTERNAL_RESPONSE
+        ADMIN_ANALYSIS --> INTERNAL_RESPONSE
+        ADMIN_GEE_IMPORT --> INTERNAL_RESPONSE
+        ADMIN_HOTSPOT --> INTERNAL_RESPONSE
+        ADMIN_VALIDATION --> INTERNAL_RESPONSE
+        ADMIN_REPORT --> FILE_RESPONSE
+        ADMIN_USERS --> INTERNAL_RESPONSE
+        ADMIN_AUDIT --> INTERNAL_RESPONSE
+    end
+
+    %% =========================
+    %% SUPER ADMIN POLICY
+    %% =========================
+    subgraph SUPERADMIN_ACCESS["Super Admin Access Rules"]
+        SUPERADMIN_POLICY --> SUPERADMIN_ALLOW["Allow full system access<br/>all MVP resources"]
+        SUPERADMIN_ALLOW --> INTERNAL_RESPONSE
+        SUPERADMIN_ALLOW --> FILE_RESPONSE
+    end
+
+    %% =========================
+    %% SENSITIVE DATA DECISION
+    %% =========================
+    subgraph SENSITIVE_FILTER["Sensitive Data Filtering Layer"]
+        INTERNAL_RESPONSE["Prepare internal API response"] --> SENSITIVITY_CHECK{"Data sensitivity level?"}
+
+        SENSITIVITY_CHECK -->|public| RETURN_FULL_ALLOWED["Return allowed public-safe data"]
+        SENSITIVITY_CHECK -->|internal| CHECK_INTERNAL_PERMISSION{"Has internal permission?"}
+        SENSITIVITY_CHECK -->|restricted| CHECK_RESTRICTED_PERMISSION{"Has restricted permission?"}
+
+        CHECK_INTERNAL_PERMISSION -->|Yes| RETURN_INTERNAL_DATA["Return internal data"]
+        CHECK_INTERNAL_PERMISSION -->|No| REDACT_INTERNAL_DATA["Redact internal fields"]
+
+        CHECK_RESTRICTED_PERMISSION -->|Yes| RETURN_RESTRICTED_DATA["Return restricted data"]
+        CHECK_RESTRICTED_PERMISSION -->|No| REDACT_RESTRICTED_DATA["Redact restricted fields"]
+
+        REDACT_INTERNAL_DATA --> RETURN_REDACTED["Return redacted response"]
+        REDACT_RESTRICTED_DATA --> RETURN_REDACTED
+
+        RETURN_FULL_ALLOWED --> SUCCESS_RESPONSE["Return 200"]
+        RETURN_INTERNAL_DATA --> SUCCESS_RESPONSE
+        RETURN_RESTRICTED_DATA --> SUCCESS_RESPONSE
+        RETURN_REDACTED --> SUCCESS_RESPONSE
+    end
+
+    %% =========================
+    %% FILE ACCESS FLOW
+    %% =========================
+    subgraph FILE_ACCESS["Protected File Access"]
+        FILE_RESPONSE["File access requested"] --> FILE_TYPE{"File type?"}
+
+        FILE_TYPE -->|Validation photo| CHECK_PHOTO_PERMISSION{"Can view validation photo?"}
+        FILE_TYPE -->|PDF report| CHECK_REPORT_PERMISSION{"Can download report?"}
+        FILE_TYPE -->|Static map| CHECK_MAP_PERMISSION{"Can view static map?"}
+        FILE_TYPE -->|Raw GEE export / GeoJSON| CHECK_EXPORT_PERMISSION{"Can access raw export?"}
+
+        CHECK_PHOTO_PERMISSION -->|Yes| STREAM_PHOTO["Stream photo from private storage"]
+        CHECK_PHOTO_PERMISSION -->|No| FORBIDDEN
+
+        CHECK_REPORT_PERMISSION -->|Yes| STREAM_REPORT["Stream PDF report from private storage"]
+        CHECK_REPORT_PERMISSION -->|No| FORBIDDEN
+
+        CHECK_MAP_PERMISSION -->|Yes| STREAM_MAP["Stream static map"]
+        CHECK_MAP_PERMISSION -->|No| FORBIDDEN
+
+        CHECK_EXPORT_PERMISSION -->|Yes| STREAM_EXPORT["Stream raw export file"]
+        CHECK_EXPORT_PERMISSION -->|No| FORBIDDEN
+
+        STREAM_PHOTO --> AUDIT_FILE_ACCESS["Write audit log if sensitive"]
+        STREAM_REPORT --> AUDIT_FILE_ACCESS
+        STREAM_MAP --> AUDIT_FILE_ACCESS
+        STREAM_EXPORT --> AUDIT_FILE_ACCESS
+
+        AUDIT_FILE_ACCESS --> FILE_SUCCESS["Return file stream"]
+    end
+
+    %% =========================
+    %% AUDIT LOG
+    %% =========================
+    subgraph AUDIT["Audit Log Rules"]
+        ADMIN_AOI -. "log create/update/import AOI" .-> WRITE_AUDIT["Write audit_logs"]
+        ADMIN_GEE_IMPORT -. "log GEE import" .-> WRITE_AUDIT
+        ADMIN_HOTSPOT -. "log status/priority change" .-> WRITE_AUDIT
+        VAL_VALIDATION_WRITE -. "log field validation" .-> WRITE_AUDIT
+        VAL_PHOTO_ACCESS -. "log photo upload" .-> WRITE_AUDIT
+        NGO_REPORT_ACCESS -. "log report generation/download" .-> WRITE_AUDIT
+        ADMIN_REPORT -. "log report generation/download" .-> WRITE_AUDIT
+        ADMIN_USERS -. "log role/user changes" .-> WRITE_AUDIT
+        STREAM_EXPORT -. "log raw export access" .-> WRITE_AUDIT
+    end
+
+    %% =========================
+    %% FINAL ERROR NODES
+    %% =========================
+    FORBIDDEN["Return 403 Forbidden"]

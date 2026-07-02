@@ -1,0 +1,207 @@
+%% system_architecture.mmd
+%% MANGROVE-EYE MVP System Architecture
+%% Scope:
+%% - Laravel + React + PostgreSQL/PostGIS + Google Earth Engine
+%% - Sentinel-2 + MVI/CMRI hotspot detection
+%% - NDVI/NDWI as supporting indices
+%% - Field validation, PDF report, RBAC
+%% - No U-Net production, no Sentinel-1, no full scheduler, no notification system in MVP
+
+flowchart TB
+
+    %% =========================
+    %% USERS
+    %% =========================
+    subgraph USERS["Users"]
+        PUBLIC["Public Viewer<br/>Generalized dashboard only"]
+        VALIDATOR["Validator Lapangan<br/>Hotspot detail + field validation"]
+        NGO["NGO / Advocate<br/>Validation result + PDF report"]
+        ADMIN["Admin / Super Admin<br/>AOI, Analysis Run, GEE Import, Users, Reports"]
+    end
+
+    %% =========================
+    %% FRONTEND
+    %% =========================
+    subgraph FRONTEND["Frontend Layer"]
+        PUBLIC_UI["Public WebGIS Dashboard<br/>React + React Leaflet<br/>Generalized hotspot view"]
+        INTERNAL_UI["Internal WebGIS Dashboard<br/>React + React Leaflet<br/>Precise hotspot view based on role"]
+        ADMIN_UI["Admin Management UI<br/>AOI, Analysis Run, GEE Import, User, Report"]
+        VALIDATION_UI["Field Validation UI<br/>Status, note, photo upload, validation point"]
+    end
+
+    %% =========================
+    %% BACKEND
+    %% =========================
+    subgraph BACKEND["Laravel Backend API"]
+        AUTH["Auth & RBAC Middleware<br/>Role / Permission Check"]
+        AOI_API["AOI API<br/>GeoJSON import + AOI metadata"]
+        ANALYSIS_API["Analysis Run API<br/>Before-after period + parameters"]
+        GEE_IMPORT_API["GEE Import API<br/>Import hotspot GeoJSON"]
+        HOTSPOT_API["Hotspot API<br/>GeoJSON response + detail"]
+        DASHBOARD_API["Dashboard API<br/>Summary, filters, map layers"]
+        VALIDATION_API["Field Validation API<br/>Status, notes, photos"]
+        REPORT_API["Report API<br/>Generate + download PDF"]
+        FILE_API["Protected File Access API<br/>Photos, static map, PDF"]
+        AUDIT_API["Audit Log API<br/>Sensitive activity tracking"]
+    end
+
+    %% =========================
+    %% DATABASE
+    %% =========================
+    subgraph DATABASE["PostgreSQL + PostGIS"]
+        USERS_DB[("users<br/>roles<br/>permissions")]
+        AOI_DB[("aoi_areas<br/>MultiPolygon SRID 4326")]
+        ANALYSIS_DB[("analysis_runs<br/>before-after metadata")]
+        IMPORT_DB[("gee_imports<br/>import metadata")]
+        LAYER_DB[("satellite_layers<br/>static map / tile metadata")]
+        HOTSPOT_DB[("hotspots<br/>Point + MultiPolygon<br/>MVI/CMRI/NDVI/NDWI values")]
+        VALIDATION_DB[("field_validations<br/>validation point + notes")]
+        PHOTO_DB[("validation_photos<br/>photo metadata + geotag")]
+        REPORT_DB[("reports<br/>PDF metadata")]
+        AUDIT_DB[("audit_logs")]
+    end
+
+    %% =========================
+    %% GOOGLE EARTH ENGINE
+    %% =========================
+    subgraph GEE["Google Earth Engine Analysis Layer"]
+        AOI_ASSET["AOI Asset / GeoJSON<br/>Kwala Serapuh / KTH Nipah"]
+        SENTINEL["Sentinel-2 Level-2A<br/>COPERNICUS/S2_SR_HARMONIZED"]
+        PREPROCESS["Preprocessing<br/>filter AOI, date, cloud, composite"]
+        INDEX_CALC["Index Calculation<br/>MVI + CMRI main<br/>NDVI + NDWI supporting"]
+        CHANGE_DETECTION["Before-after Change Detection<br/>delta MVI / delta CMRI"]
+        HOTSPOT_EXPORT["Hotspot Export<br/>GeoJSON / static image / optional tile URL"]
+    end
+
+    %% =========================
+    %% STORAGE
+    %% =========================
+    subgraph STORAGE["File Storage"]
+        AOI_FILES["AOI Files<br/>GeoJSON / Shapefile"]
+        GEE_FILES["GEE Export Files<br/>GeoJSON / CSV / static map"]
+        VALIDATION_FILES["Validation Photos<br/>private access"]
+        REPORT_FILES["PDF Reports<br/>private access"]
+        STATIC_MAPS["Static Maps<br/>for PDF report"]
+    end
+
+    %% =========================
+    %% PDF
+    %% =========================
+    subgraph PDF["PDF Report Generation"]
+        PDF_ENGINE["PDF Generator<br/>DomPDF / Browsershot / Snappy"]
+        PDF_TEMPLATE["Report Template<br/>Hotspot + indices + validation + disclaimer"]
+    end
+
+    %% =========================
+    %% USER TO FRONTEND
+    %% =========================
+    PUBLIC --> PUBLIC_UI
+    VALIDATOR --> INTERNAL_UI
+    VALIDATOR --> VALIDATION_UI
+    NGO --> INTERNAL_UI
+    NGO --> ADMIN_UI
+    ADMIN --> ADMIN_UI
+    ADMIN --> INTERNAL_UI
+
+    %% =========================
+    %% FRONTEND TO BACKEND
+    %% =========================
+    PUBLIC_UI --> DASHBOARD_API
+    PUBLIC_UI --> HOTSPOT_API
+
+    INTERNAL_UI --> AUTH
+    INTERNAL_UI --> DASHBOARD_API
+    INTERNAL_UI --> HOTSPOT_API
+    INTERNAL_UI --> AOI_API
+    INTERNAL_UI --> ANALYSIS_API
+
+    ADMIN_UI --> AUTH
+    ADMIN_UI --> AOI_API
+    ADMIN_UI --> ANALYSIS_API
+    ADMIN_UI --> GEE_IMPORT_API
+    ADMIN_UI --> REPORT_API
+    ADMIN_UI --> AUDIT_API
+
+    VALIDATION_UI --> AUTH
+    VALIDATION_UI --> VALIDATION_API
+    VALIDATION_UI --> FILE_API
+
+    %% =========================
+    %% AUTH PROTECTION
+    %% =========================
+    AUTH --> AOI_API
+    AUTH --> ANALYSIS_API
+    AUTH --> GEE_IMPORT_API
+    AUTH --> HOTSPOT_API
+    AUTH --> VALIDATION_API
+    AUTH --> REPORT_API
+    AUTH --> FILE_API
+    AUTH --> AUDIT_API
+
+    %% =========================
+    %% BACKEND TO DATABASE
+    %% =========================
+    AUTH --> USERS_DB
+    AOI_API --> AOI_DB
+    ANALYSIS_API --> ANALYSIS_DB
+    GEE_IMPORT_API --> IMPORT_DB
+    GEE_IMPORT_API --> HOTSPOT_DB
+    GEE_IMPORT_API --> LAYER_DB
+    HOTSPOT_API --> HOTSPOT_DB
+    HOTSPOT_API --> ANALYSIS_DB
+    DASHBOARD_API --> HOTSPOT_DB
+    DASHBOARD_API --> ANALYSIS_DB
+    DASHBOARD_API --> LAYER_DB
+    VALIDATION_API --> VALIDATION_DB
+    VALIDATION_API --> PHOTO_DB
+    VALIDATION_API --> HOTSPOT_DB
+    REPORT_API --> REPORT_DB
+    REPORT_API --> HOTSPOT_DB
+    REPORT_API --> VALIDATION_DB
+    AUDIT_API --> AUDIT_DB
+
+    %% =========================
+    %% STORAGE RELATIONS
+    %% =========================
+    AOI_API --> AOI_FILES
+    GEE_IMPORT_API --> GEE_FILES
+    VALIDATION_API --> VALIDATION_FILES
+    FILE_API --> VALIDATION_FILES
+    REPORT_API --> REPORT_FILES
+    REPORT_API --> STATIC_MAPS
+    FILE_API --> REPORT_FILES
+    FILE_API --> STATIC_MAPS
+
+    %% =========================
+    %% PDF RELATIONS
+    %% =========================
+    REPORT_API --> PDF_ENGINE
+    PDF_ENGINE --> PDF_TEMPLATE
+    PDF_TEMPLATE --> REPORT_FILES
+    PDF_TEMPLATE --> STATIC_MAPS
+    PDF_TEMPLATE --> VALIDATION_FILES
+
+    %% =========================
+    %% GEE PIPELINE
+    %% =========================
+    AOI_FILES -. "AOI GeoJSON uploaded / digitized" .-> AOI_ASSET
+    AOI_ASSET --> PREPROCESS
+    SENTINEL --> PREPROCESS
+    PREPROCESS --> INDEX_CALC
+    INDEX_CALC --> CHANGE_DETECTION
+    CHANGE_DETECTION --> HOTSPOT_EXPORT
+
+    HOTSPOT_EXPORT -. "GeoJSON / static map / optional tile URL" .-> GEE_FILES
+    GEE_FILES --> GEE_IMPORT_API
+
+    %% =========================
+    %% PUBLIC VS INTERNAL DATA RULES
+    %% =========================
+    HOTSPOT_API -. "Public response:<br/>generalized location only" .-> PUBLIC_UI
+    HOTSPOT_API -. "Internal response:<br/>precise geometry if permitted" .-> INTERNAL_UI
+
+    %% =========================
+    %% DISCLAIMERS / SCOPE NOTES
+    %% =========================
+    CHANGE_DETECTION -. "Satellite result is early indication,<br/>not final legal proof" .-> HOTSPOT_DB
+    VALIDATION_DB -. "Field validation required<br/>before advocacy report" .-> REPORT_API

@@ -1,0 +1,114 @@
+%% hotspot_lifecycle.mmd
+%% MANGROVE-EYE MVP Hotspot Lifecycle
+%% Scope:
+%% - Hotspot is created from GEE import as early indication
+%% - Validation status flow: detected, under_review, validated, rejected, needs_recheck
+%% - Field validation and PDF report are part of MVP
+%% - Satellite result is not final legal proof
+%% - No legal case management, no notification system, no U-Net workflow in MVP
+
+stateDiagram-v2
+
+    [*] --> GeeAnalysis
+
+    state "GEE Analysis" as GeeAnalysis
+    state "Hotspot GeoJSON Exported" as GeoJsonExported
+    state "Imported to Laravel" as Imported
+    state "Detected" as Detected
+    state "Under Review" as UnderReview
+    state "Validated" as Validated
+    state "Rejected" as Rejected
+    state "Needs Recheck" as NeedsRecheck
+    state "PDF Report Generated" as ReportGenerated
+
+    GeeAnalysis --> GeoJsonExported: Vectorize hotspot from MVI/CMRI change mask
+    GeoJsonExported --> Imported: Admin imports GeoJSON
+    Imported --> Detected: Create hotspot record\nvalidation_status = detected
+
+    note right of Detected
+        Initial satellite-based indication.
+        Not legal proof.
+        Requires field validation.
+    end note
+
+    Detected --> UnderReview: Validator/Admin opens hotspot for review
+    Detected --> NeedsRecheck: Data unclear or suspected false positive
+    Detected --> Rejected: Admin rejects obvious false positive
+
+    UnderReview --> Validated: Field evidence confirms mangrove loss
+    UnderReview --> Rejected: Field evidence disproves hotspot
+    UnderReview --> NeedsRecheck: Evidence incomplete or uncertain
+
+    NeedsRecheck --> UnderReview: Revisit / revalidation started
+    NeedsRecheck --> Validated: Recheck confirms indication
+    NeedsRecheck --> Rejected: Recheck disproves indication
+
+    Validated --> NeedsRecheck: Conflicting evidence appears
+    Rejected --> UnderReview: Admin reopens if new evidence appears
+
+    Validated --> ReportGenerated: NGO/Admin generates hotspot PDF
+    NeedsRecheck --> ReportGenerated: Authorized report with uncertainty note
+    Rejected --> ReportGenerated: Optional internal report if needed
+
+    note right of ReportGenerated
+        PDF must include disclaimer:
+        satellite result is early indication,
+        not final legal judgement.
+    end note
+
+    ReportGenerated --> Validated: Hotspot status remains validated
+    ReportGenerated --> NeedsRecheck: Hotspot status remains needs_recheck
+    ReportGenerated --> Rejected: Hotspot status remains rejected
+
+    state Detected {
+        [*] --> StoreGeometry
+        StoreGeometry --> StoreIndices
+        StoreIndices --> StorePriority
+        StorePriority --> [*]
+
+        state "Store centroid + polygon" as StoreGeometry
+        state "Store MVI/CMRI/NDVI/NDWI values" as StoreIndices
+        state "Set priority low/medium/high" as StorePriority
+    }
+
+    state UnderReview {
+        [*] --> OpenDetail
+        OpenDetail --> ReviewIndices
+        ReviewIndices --> PlanFieldCheck
+        PlanFieldCheck --> [*]
+
+        state "Open hotspot detail drawer" as OpenDetail
+        state "Review area, centroid, MVI/CMRI delta" as ReviewIndices
+        state "Prepare field validation" as PlanFieldCheck
+    }
+
+    state Validated {
+        [*] --> SaveValidation
+        SaveValidation --> SaveEvidence
+        SaveEvidence --> UpdateSummary
+        UpdateSummary --> [*]
+
+        state "Save validation status" as SaveValidation
+        state "Save notes, coordinate, photos" as SaveEvidence
+        state "Update dashboard summary" as UpdateSummary
+    }
+
+    state Rejected {
+        [*] --> SaveReason
+        SaveReason --> MarkFalsePositive
+        MarkFalsePositive --> UpdateRejectedSummary
+        UpdateRejectedSummary --> [*]
+
+        state "Save rejection note" as SaveReason
+        state "Mark false positive reason" as MarkFalsePositive
+        state "Update dashboard summary" as UpdateRejectedSummary
+    }
+
+    state NeedsRecheck {
+        [*] --> SaveUncertainty
+        SaveUncertainty --> KeepVisibleForValidator
+        KeepVisibleForValidator --> [*]
+
+        state "Save uncertainty note" as SaveUncertainty
+        state "Keep hotspot visible for follow-up validation" as KeepVisibleForValidator
+    }

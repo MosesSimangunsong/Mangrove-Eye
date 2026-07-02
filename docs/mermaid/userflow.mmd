@@ -1,0 +1,158 @@
+%% userflow.mmd
+%% MANGROVE-EYE MVP User Flow
+%% Scope:
+%% - Public Viewer, Validator, NGO/Advocate, Admin, Super Admin
+%% - WebGIS dashboard, AOI, analysis run, GEE import, hotspot review, field validation, PDF report
+%% - Satellite result is early indication, not final legal proof
+%% - No U-Net, no Sentinel-1, no full scheduler, no notification system in MVP
+
+flowchart TB
+
+    %% =========================
+    %% ENTRY POINTS
+    %% =========================
+    START["User opens MANGROVE-EYE"] --> ACCESS_TYPE{"Access type?"}
+
+    ACCESS_TYPE --> PUBLIC_ENTRY["Public access<br/>No login"]
+    ACCESS_TYPE --> LOGIN["Login"]
+
+    LOGIN --> AUTH_CHECK{"Authentication valid?"}
+    AUTH_CHECK -->|No| LOGIN_ERROR["Show login error"]
+    LOGIN_ERROR --> LOGIN
+
+    AUTH_CHECK -->|Yes| ROLE_CHECK{"User role?"}
+
+    ROLE_CHECK --> VALIDATOR_ENTRY["Validator Lapangan"]
+    ROLE_CHECK --> NGO_ENTRY["NGO / Advocate"]
+    ROLE_CHECK --> ADMIN_ENTRY["Admin"]
+    ROLE_CHECK --> SUPERADMIN_ENTRY["Super Admin"]
+
+    %% =========================
+    %% PUBLIC VIEWER FLOW
+    %% =========================
+    subgraph PUBLIC_FLOW["Public Viewer Flow"]
+        PUBLIC_ENTRY --> PUBLIC_DASHBOARD["Open Public WebGIS Dashboard"]
+        PUBLIC_DASHBOARD --> PUBLIC_SUMMARY["View generalized summary<br/>total hotspots, area estimate, latest analysis"]
+        PUBLIC_DASHBOARD --> PUBLIC_MAP["View generalized hotspot map<br/>no precise coordinates"]
+        PUBLIC_MAP --> PUBLIC_HOTSPOT["Click generalized hotspot"]
+        PUBLIC_HOTSPOT --> PUBLIC_POPUP["View public popup<br/>priority, status, estimated area"]
+        PUBLIC_POPUP --> PUBLIC_DISCLAIMER["Read disclaimer<br/>data is early indication"]
+        PUBLIC_DASHBOARD --> PUBLIC_END["End public session"]
+    end
+
+    %% =========================
+    %% VALIDATOR FLOW
+    %% =========================
+    subgraph VALIDATOR_FLOW["Validator Lapangan Flow"]
+        VALIDATOR_ENTRY --> VALIDATOR_DASHBOARD["Open Internal WebGIS Dashboard"]
+        VALIDATOR_DASHBOARD --> VALIDATOR_FILTER["Filter hotspot<br/>analysis run, priority, validation status"]
+        VALIDATOR_FILTER --> VALIDATOR_MAP["View precise hotspot map<br/>based on permission"]
+        VALIDATOR_MAP --> VALIDATOR_SELECT_HOTSPOT["Select hotspot"]
+        VALIDATOR_SELECT_HOTSPOT --> VALIDATOR_DETAIL["Open hotspot detail drawer<br/>area, centroid, MVI/CMRI delta, status"]
+        VALIDATOR_DETAIL --> VALIDATOR_DECISION{"Need field check?"}
+
+        VALIDATOR_DECISION -->|No| VALIDATOR_BACK["Return to hotspot list/map"]
+        VALIDATOR_BACK --> VALIDATOR_FILTER
+
+        VALIDATOR_DECISION -->|Yes| VALIDATOR_FIELD_CHECK["Go to field location<br/>offline physical verification"]
+        VALIDATOR_FIELD_CHECK --> VALIDATION_FORM["Fill field validation form<br/>status, observed condition, note, coordinate"]
+        VALIDATION_FORM --> UPLOAD_PHOTO{"Upload photo evidence?"}
+        UPLOAD_PHOTO -->|Yes| PHOTO_UPLOAD["Upload validation photo"]
+        UPLOAD_PHOTO -->|No| SAVE_VALIDATION["Save validation record"]
+        PHOTO_UPLOAD --> SAVE_VALIDATION
+        SAVE_VALIDATION --> STATUS_UPDATED["Hotspot status updated<br/>validated / rejected / needs_recheck / under_review"]
+        STATUS_UPDATED --> VALIDATOR_REVIEW["Review saved validation history"]
+        VALIDATOR_REVIEW --> VALIDATOR_END["End validator task"]
+    end
+
+    %% =========================
+    %% NGO / ADVOCATE FLOW
+    %% =========================
+    subgraph NGO_FLOW["NGO / Advocate Flow"]
+        NGO_ENTRY --> NGO_DASHBOARD["Open Internal WebGIS Dashboard"]
+        NGO_DASHBOARD --> NGO_FILTER["Filter validated or high priority hotspots"]
+        NGO_FILTER --> NGO_SELECT_HOTSPOT["Open hotspot detail"]
+        NGO_SELECT_HOTSPOT --> NGO_REVIEW_VALIDATION["Review validation result<br/>notes, status, photos if allowed"]
+        NGO_REVIEW_VALIDATION --> NGO_REPORT_DECISION{"Generate PDF report?"}
+
+        NGO_REPORT_DECISION -->|No| NGO_BACK["Return to dashboard"]
+        NGO_BACK --> NGO_FILTER
+
+        NGO_REPORT_DECISION -->|Yes| NGO_REPORT_MODAL["Open report confirmation modal"]
+        NGO_REPORT_MODAL --> NGO_DISCLAIMER["Confirm early indication disclaimer"]
+        NGO_DISCLAIMER --> GENERATE_REPORT["Generate PDF report"]
+        GENERATE_REPORT --> DOWNLOAD_REPORT["Download PDF report"]
+        DOWNLOAD_REPORT --> NGO_END["Use report for advocacy follow-up"]
+    end
+
+    %% =========================
+    %% ADMIN FLOW
+    %% =========================
+    subgraph ADMIN_FLOW["Admin Flow"]
+        ADMIN_ENTRY --> ADMIN_DASHBOARD["Open Admin Dashboard"]
+
+        ADMIN_DASHBOARD --> ADMIN_AOI_FLOW["Manage AOI"]
+        ADMIN_AOI_FLOW --> IMPORT_AOI["Import / create AOI<br/>GeoJSON / digitized polygon"]
+        IMPORT_AOI --> VERIFY_AOI["Set AOI metadata<br/>verification status, sensitivity level"]
+        VERIFY_AOI --> SAVE_AOI["Save AOI to PostGIS"]
+
+        ADMIN_DASHBOARD --> ADMIN_ANALYSIS_FLOW["Manage Analysis Run"]
+        ADMIN_ANALYSIS_FLOW --> CREATE_ANALYSIS_RUN["Create analysis run<br/>AOI, before-after period, Sentinel-2, MVI/CMRI parameters"]
+        CREATE_ANALYSIS_RUN --> RUN_GEE["Run GEE script manually / semi-manually<br/>outside Laravel"]
+        RUN_GEE --> EXPORT_GEE["Export GEE result<br/>hotspot GeoJSON, static map, optional tile URL"]
+        EXPORT_GEE --> IMPORT_GEE["Import hotspot GeoJSON into system"]
+        IMPORT_GEE --> REVIEW_IMPORT["Review imported hotspots<br/>count, area, status, priority"]
+        REVIEW_IMPORT --> PUBLISH_RUN{"Publish analysis run?"}
+        PUBLISH_RUN -->|No| KEEP_DRAFT["Keep as draft / revise parameters"]
+        KEEP_DRAFT --> CREATE_ANALYSIS_RUN
+        PUBLISH_RUN -->|Yes| PUBLISH_TO_DASHBOARD["Publish to internal dashboard"]
+
+        ADMIN_DASHBOARD --> ADMIN_HOTSPOT_FLOW["Manage Hotspots"]
+        ADMIN_HOTSPOT_FLOW --> ADMIN_REVIEW_HOTSPOT["Review hotspot detail"]
+        ADMIN_REVIEW_HOTSPOT --> ADMIN_UPDATE_STATUS["Update priority/status if needed"]
+
+        ADMIN_DASHBOARD --> ADMIN_REPORT_FLOW["Manage Reports"]
+        ADMIN_REPORT_FLOW --> ADMIN_GENERATE_REPORT["Generate / download hotspot PDF report"]
+
+        ADMIN_DASHBOARD --> ADMIN_USER_FLOW["Manage Users and Roles"]
+        ADMIN_USER_FLOW --> CREATE_USER["Create validator / NGO / admin user"]
+        CREATE_USER --> ASSIGN_ROLE["Assign role and permission"]
+
+        ADMIN_DASHBOARD --> ADMIN_AUDIT_FLOW["Review audit logs"]
+        ADMIN_AUDIT_FLOW --> AUDIT_REVIEW["Check imports, validation changes, report downloads"]
+
+        PUBLISH_TO_DASHBOARD --> ADMIN_END["End admin workflow"]
+        ADMIN_UPDATE_STATUS --> ADMIN_END
+        ADMIN_GENERATE_REPORT --> ADMIN_END
+        ASSIGN_ROLE --> ADMIN_END
+        AUDIT_REVIEW --> ADMIN_END
+    end
+
+    %% =========================
+    %% SUPER ADMIN FLOW
+    %% =========================
+    subgraph SUPERADMIN_FLOW["Super Admin Flow"]
+        SUPERADMIN_ENTRY --> SUPERADMIN_DASHBOARD["Open Super Admin Dashboard"]
+        SUPERADMIN_DASHBOARD --> SUPERADMIN_USERS["Manage all users, roles, permissions"]
+        SUPERADMIN_DASHBOARD --> SUPERADMIN_CONFIG["Manage system-level configuration"]
+        SUPERADMIN_DASHBOARD --> SUPERADMIN_AUDIT["Review full audit log"]
+        SUPERADMIN_USERS --> SUPERADMIN_END["End super admin task"]
+        SUPERADMIN_CONFIG --> SUPERADMIN_END
+        SUPERADMIN_AUDIT --> SUPERADMIN_END
+    end
+
+    %% =========================
+    %% CROSS-FLOW CONNECTIONS
+    %% =========================
+    SAVE_AOI -. "AOI available for analysis run" .-> CREATE_ANALYSIS_RUN
+    PUBLISH_TO_DASHBOARD -. "Hotspots visible to internal users" .-> VALIDATOR_DASHBOARD
+    STATUS_UPDATED -. "Validation result visible to NGO/Admin" .-> NGO_REVIEW_VALIDATION
+    GENERATE_REPORT -. "Report metadata stored and protected" .-> ADMIN_REPORT_FLOW
+
+    %% =========================
+    %% IMPORTANT RULES
+    %% =========================
+    PUBLIC_MAP -. "Public viewer only sees generalized location" .-> PUBLIC_DISCLAIMER
+    VALIDATOR_DETAIL -. "Precise coordinates only for authorized role" .-> VALIDATOR_FIELD_CHECK
+    NGO_DISCLAIMER -. "PDF is early indication, not final legal proof" .-> GENERATE_REPORT
+    RUN_GEE -. "GEE is the analysis engine<br/>Laravel does not calculate raster indices" .-> EXPORT_GEE

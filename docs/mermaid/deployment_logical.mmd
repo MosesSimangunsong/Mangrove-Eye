@@ -1,0 +1,186 @@
+%% deployment_logical.mmd
+%% MANGROVE-EYE MVP Logical Deployment Diagram
+%% Scope:
+%% - Logical deployment for MVP only
+%% - React + React Leaflet, Laravel API, PostgreSQL/PostGIS, private storage, PDF generation, Google Earth Engine
+%% - Manual / semi-manual GEE export and import
+%% - Public vs internal access boundary
+%% - No U-Net serving, no Sentinel-1 processing, no full scheduler, no notification worker in MVP
+
+flowchart TB
+
+    %% =========================
+    %% CLIENT SIDE
+    %% =========================
+    subgraph CLIENT["Client Devices"]
+        PUBLIC_BROWSER["Public User Browser<br/>Public WebGIS access"]
+        INTERNAL_BROWSER["Internal User Browser<br/>Validator / NGO / Admin / Super Admin"]
+    end
+
+    %% =========================
+    %% PUBLIC INTERNET / HTTPS
+    %% =========================
+    subgraph NETWORK["Public Network"]
+        HTTPS["HTTPS Request<br/>Web app + API access"]
+    end
+
+    %% =========================
+    %% APPLICATION SERVER
+    %% =========================
+    subgraph APP_SERVER["Application Server / VPS / Cloud Instance"]
+        WEB_SERVER["Web Server<br/>Nginx / Apache"]
+        REACT_BUILD["React Frontend Build<br/>React + React Leaflet + Tailwind"]
+        LARAVEL_APP["Laravel Application<br/>REST API + Auth + RBAC"]
+        PDF_ENGINE["PDF Engine<br/>DomPDF / Browsershot / Snappy"]
+        QUEUE_OPTIONAL["Queue Worker<br/>Optional for heavy PDF/import jobs"]
+    end
+
+    %% =========================
+    %% DATABASE SERVER
+    %% =========================
+    subgraph DB_SERVER["Database Server"]
+        POSTGRES["PostgreSQL"]
+        POSTGIS["PostGIS Extension<br/>Spatial query + geometry storage"]
+        DB_TABLES[("MVP Tables<br/>users, roles, permissions<br/>aoi_areas, analysis_runs<br/>gee_imports, satellite_layers<br/>hotspots, field_validations<br/>validation_photos, reports, audit_logs")]
+    end
+
+    %% =========================
+    %% PRIVATE STORAGE
+    %% =========================
+    subgraph STORAGE["Private File Storage"]
+        AOI_STORAGE["AOI Files<br/>GeoJSON / Shapefile"]
+        GEE_STORAGE["GEE Export Files<br/>hotspot GeoJSON<br/>static map<br/>optional tile metadata"]
+        PHOTO_STORAGE["Validation Photos<br/>private access"]
+        REPORT_STORAGE["PDF Reports<br/>private access"]
+        STATIC_MAP_STORAGE["Static Map Images<br/>for PDF report"]
+    end
+
+    %% =========================
+    %% GOOGLE EARTH ENGINE
+    %% =========================
+    subgraph GEE["Google Earth Engine"]
+        GEE_CODE_EDITOR["GEE Code Editor<br/>manual / semi-manual MVP workflow"]
+        S2_DATASET["Sentinel-2 Level-2A<br/>COPERNICUS/S2_SR_HARMONIZED"]
+        GEE_PROCESSING["GEE Processing<br/>AOI filter, cloud filter, composite<br/>MVI/CMRI main indices<br/>NDVI/NDWI supporting indices<br/>before-after detection"]
+        GEE_EXPORT["GEE Export Output<br/>GeoJSON / static image / optional tile URL"]
+    end
+
+    %% =========================
+    %% ADMIN LOCAL WORKFLOW
+    %% =========================
+    subgraph ADMIN_WORKFLOW["Admin GEE Import Workflow"]
+        ADMIN_DOWNLOAD["Admin downloads GEE export<br/>or retrieves Drive export"]
+        ADMIN_UPLOAD["Admin uploads GeoJSON<br/>through internal dashboard"]
+    end
+
+    %% =========================
+    %% PUBLIC ACCESS BOUNDARY
+    %% =========================
+    subgraph PUBLIC_BOUNDARY["Public Access Boundary"]
+        PUBLIC_API["Public API<br/>/api/v1/public"]
+        PUBLIC_RESPONSE["Generalized Response<br/>summary + coarse hotspot location<br/>no sensitive data"]
+    end
+
+    %% =========================
+    %% INTERNAL ACCESS BOUNDARY
+    %% =========================
+    subgraph INTERNAL_BOUNDARY["Internal Access Boundary"]
+        INTERNAL_API["Internal API<br/>/api/v1"]
+        AUTH_RBAC["Auth + RBAC Middleware<br/>role / permission check"]
+        INTERNAL_RESPONSE["Internal Response<br/>precise geometry only if permitted"]
+    end
+
+    %% =========================
+    %% USER ACCESS
+    %% =========================
+    PUBLIC_BROWSER --> HTTPS
+    INTERNAL_BROWSER --> HTTPS
+    HTTPS --> WEB_SERVER
+    WEB_SERVER --> REACT_BUILD
+    REACT_BUILD --> LARAVEL_APP
+
+    %% =========================
+    %% PUBLIC ROUTING
+    %% =========================
+    LARAVEL_APP --> PUBLIC_API
+    PUBLIC_API --> PUBLIC_RESPONSE
+    PUBLIC_RESPONSE --> PUBLIC_BROWSER
+
+    %% =========================
+    %% INTERNAL ROUTING
+    %% =========================
+    LARAVEL_APP --> INTERNAL_API
+    INTERNAL_API --> AUTH_RBAC
+    AUTH_RBAC --> INTERNAL_RESPONSE
+    INTERNAL_RESPONSE --> INTERNAL_BROWSER
+
+    %% =========================
+    %% APPLICATION TO DATABASE
+    %% =========================
+    LARAVEL_APP --> POSTGRES
+    POSTGRES --> POSTGIS
+    POSTGIS --> DB_TABLES
+
+    %% =========================
+    %% APPLICATION TO STORAGE
+    %% =========================
+    LARAVEL_APP --> AOI_STORAGE
+    LARAVEL_APP --> GEE_STORAGE
+    LARAVEL_APP --> PHOTO_STORAGE
+    LARAVEL_APP --> REPORT_STORAGE
+    LARAVEL_APP --> STATIC_MAP_STORAGE
+
+    %% =========================
+    %% PDF GENERATION
+    %% =========================
+    LARAVEL_APP --> PDF_ENGINE
+    PDF_ENGINE --> REPORT_STORAGE
+    PDF_ENGINE --> STATIC_MAP_STORAGE
+    PDF_ENGINE --> PHOTO_STORAGE
+
+    %% =========================
+    %% OPTIONAL QUEUE
+    %% =========================
+    LARAVEL_APP -. "optional async job" .-> QUEUE_OPTIONAL
+    QUEUE_OPTIONAL -. "generate PDF / process large import" .-> PDF_ENGINE
+    QUEUE_OPTIONAL -. "update database after job" .-> POSTGRES
+
+    %% =========================
+    %% GEE WORKFLOW
+    %% =========================
+    AOI_STORAGE -. "AOI GeoJSON / digitized AOI" .-> GEE_CODE_EDITOR
+    GEE_CODE_EDITOR --> S2_DATASET
+    S2_DATASET --> GEE_PROCESSING
+    GEE_PROCESSING --> GEE_EXPORT
+
+    GEE_EXPORT -. "manual / semi-manual export" .-> ADMIN_DOWNLOAD
+    ADMIN_DOWNLOAD --> ADMIN_UPLOAD
+    ADMIN_UPLOAD --> LARAVEL_APP
+    ADMIN_UPLOAD --> GEE_STORAGE
+
+    %% =========================
+    %% IMPORT TO DATABASE
+    %% =========================
+    LARAVEL_APP -. "parse imported GeoJSON" .-> DB_TABLES
+    LARAVEL_APP -. "store hotspot geometry<br/>Point + MultiPolygon SRID 4326" .-> POSTGIS
+
+    %% =========================
+    %% SECURITY RULES
+    %% =========================
+    PUBLIC_API -. "must not expose precise centroid" .-> PUBLIC_RESPONSE
+    PUBLIC_API -. "must not expose conflict polygon detail" .-> PUBLIC_RESPONSE
+    PUBLIC_API -. "must not expose validation photos" .-> PUBLIC_RESPONSE
+    PUBLIC_API -. "must not expose validator notes" .-> PUBLIC_RESPONSE
+    PUBLIC_API -. "must not expose internal PDF reports" .-> PUBLIC_RESPONSE
+    PUBLIC_API -. "must not expose raw GEE GeoJSON" .-> PUBLIC_RESPONSE
+
+    AUTH_RBAC -. "validator: hotspot detail + validation" .-> INTERNAL_RESPONSE
+    AUTH_RBAC -. "ngo_advocate: validation result + PDF report" .-> INTERNAL_RESPONSE
+    AUTH_RBAC -. "admin: AOI, analysis run, GEE import, users, reports" .-> INTERNAL_RESPONSE
+    AUTH_RBAC -. "super_admin: full MVP access" .-> INTERNAL_RESPONSE
+
+    %% =========================
+    %% MVP SCOPE NOTES
+    %% =========================
+    GEE_PROCESSING -. "Satellite output is early indication,<br/>not final legal proof" .-> LARAVEL_APP
+    LARAVEL_APP -. "Field validation required<br/>before strong advocacy report" .-> PHOTO_STORAGE

@@ -1,0 +1,266 @@
+%% erd.mmd
+%% MANGROVE-EYE MVP Entity Relationship Diagram
+%% Scope:
+%% - Users, RBAC, AOI, Analysis Run, GEE Import, Satellite Layers
+%% - Hotspots, Field Validation, Validation Photos, Reports, Audit Logs
+%% - PostgreSQL/PostGIS spatial storage
+%% - No U-Net training tables, no Sentinel-1 workflow tables, no notification tables in MVP
+
+erDiagram
+
+    USERS {
+        bigint id PK
+        string name
+        string email UK
+        string password
+        string organization
+        string phone
+        boolean is_active
+        datetime last_login_at
+        datetime created_at
+        datetime updated_at
+        datetime deleted_at
+    }
+
+    ROLES {
+        bigint id PK
+        string name
+        string slug UK
+        text description
+        datetime created_at
+        datetime updated_at
+    }
+
+    PERMISSIONS {
+        bigint id PK
+        string name
+        string slug UK
+        text description
+        datetime created_at
+        datetime updated_at
+    }
+
+    USER_ROLES {
+        bigint id PK
+        bigint user_id FK
+        bigint role_id FK
+        datetime created_at
+    }
+
+    ROLE_PERMISSIONS {
+        bigint id PK
+        bigint role_id FK
+        bigint permission_id FK
+        datetime created_at
+    }
+
+    AOI_AREAS {
+        bigint id PK
+        string code UK
+        string name
+        string aoi_type
+        text description
+        string village
+        string district
+        string regency
+        string province
+        decimal estimated_area_ha
+        string legal_status
+        string legal_reference
+        string source_type
+        string source_name
+        string source_file_path
+        string verification_status
+        string sensitivity_level
+        geometry geom
+        bigint created_by FK
+        datetime created_at
+        datetime updated_at
+        datetime deleted_at
+    }
+
+    ANALYSIS_RUNS {
+        bigint id PK
+        bigint aoi_area_id FK
+        string name
+        text description
+        string dataset_name
+        string gee_collection_id
+        date before_start_date
+        date before_end_date
+        date after_start_date
+        date after_end_date
+        decimal cloud_threshold
+        jsonb primary_indices
+        jsonb supporting_indices
+        jsonb threshold_params
+        jsonb processing_params
+        int total_hotspots
+        decimal total_area_ha
+        string status
+        datetime processed_at
+        datetime published_at
+        bigint created_by FK
+        datetime created_at
+        datetime updated_at
+        datetime deleted_at
+    }
+
+    GEE_IMPORTS {
+        bigint id PK
+        bigint analysis_run_id FK
+        string import_type
+        string file_name
+        string file_path
+        text source_url
+        string gee_task_id
+        string status
+        int total_features
+        text error_message
+        bigint imported_by FK
+        datetime imported_at
+        datetime created_at
+        datetime updated_at
+    }
+
+    SATELLITE_LAYERS {
+        bigint id PK
+        bigint analysis_run_id FK
+        string layer_name
+        string layer_type
+        string period_type
+        string storage_type
+        string file_path
+        text tile_url
+        jsonb bbox
+        jsonb visualization_params
+        boolean is_public
+        datetime created_at
+        datetime updated_at
+    }
+
+    HOTSPOTS {
+        bigint id PK
+        string hotspot_code UK
+        bigint analysis_run_id FK
+        bigint aoi_area_id FK
+        bigint gee_import_id FK
+        datetime detected_at
+        geometry centroid
+        geometry geom
+        decimal area_ha
+        decimal mvi_before
+        decimal mvi_after
+        decimal mvi_delta
+        decimal cmri_before
+        decimal cmri_after
+        decimal cmri_delta
+        decimal ndvi_before
+        decimal ndvi_after
+        decimal ndvi_delta
+        decimal ndwi_before
+        decimal ndwi_after
+        decimal ndwi_delta
+        string priority
+        string validation_status
+        decimal confidence_score
+        text false_positive_reason
+        string sensitivity_level
+        jsonb properties
+        datetime created_at
+        datetime updated_at
+        datetime deleted_at
+    }
+
+    FIELD_VALIDATIONS {
+        bigint id PK
+        bigint hotspot_id FK
+        bigint validator_id FK
+        string validation_status
+        text validation_note
+        string observed_condition
+        string confidence_level
+        geometry validation_point
+        datetime visited_at
+        boolean is_geotagged
+        string sensitivity_level
+        datetime created_at
+        datetime updated_at
+        datetime deleted_at
+    }
+
+    VALIDATION_PHOTOS {
+        bigint id PK
+        bigint field_validation_id FK
+        string file_path
+        string file_name
+        string mime_type
+        int file_size
+        datetime taken_at
+        geometry photo_point
+        text caption
+        boolean is_primary
+        string sensitivity_level
+        datetime created_at
+        datetime updated_at
+    }
+
+    REPORTS {
+        bigint id PK
+        string report_code UK
+        string report_type
+        bigint hotspot_id FK
+        bigint analysis_run_id FK
+        string title
+        text summary
+        string file_path
+        bigint generated_by FK
+        datetime generated_at
+        string status
+        string sensitivity_level
+        text disclaimer_text
+        jsonb metadata
+        datetime created_at
+        datetime updated_at
+    }
+
+    AUDIT_LOGS {
+        bigint id PK
+        bigint user_id FK
+        string action
+        string entity_type
+        string entity_id
+        text description
+        jsonb old_values
+        jsonb new_values
+        string ip_address
+        text user_agent
+        datetime created_at
+    }
+
+    USERS ||--o{ USER_ROLES : has
+    ROLES ||--o{ USER_ROLES : assigned_to
+    ROLES ||--o{ ROLE_PERMISSIONS : has
+    PERMISSIONS ||--o{ ROLE_PERMISSIONS : granted_to
+
+    USERS ||--o{ AOI_AREAS : creates
+    USERS ||--o{ ANALYSIS_RUNS : creates
+    USERS ||--o{ GEE_IMPORTS : imports
+    USERS ||--o{ FIELD_VALIDATIONS : validates
+    USERS ||--o{ REPORTS : generates
+    USERS ||--o{ AUDIT_LOGS : performs
+
+    AOI_AREAS ||--o{ ANALYSIS_RUNS : analyzed_in
+    AOI_AREAS ||--o{ HOTSPOTS : contains
+
+    ANALYSIS_RUNS ||--o{ GEE_IMPORTS : has
+    ANALYSIS_RUNS ||--o{ SATELLITE_LAYERS : produces
+    ANALYSIS_RUNS ||--o{ HOTSPOTS : detects
+    ANALYSIS_RUNS ||--o{ REPORTS : summarized_by
+
+    GEE_IMPORTS ||--o{ HOTSPOTS : creates
+
+    HOTSPOTS ||--o{ FIELD_VALIDATIONS : has
+    HOTSPOTS ||--o{ REPORTS : reported_in
+
+    FIELD_VALIDATIONS ||--o{ VALIDATION_PHOTOS : has

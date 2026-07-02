@@ -1,0 +1,191 @@
+%% gee_data_pipeline.mmd
+%% MANGROVE-EYE MVP GEE Data Pipeline
+%% Scope:
+%% - AOI Kwala Serapuh / KTH Nipah
+%% - Sentinel-2 Level-2A via Google Earth Engine
+%% - MVI + CMRI as main indices
+%% - NDVI + NDWI as supporting indices
+%% - Before-after hotspot detection
+%% - Export GeoJSON/static map/optional tile URL
+%% - Import into Laravel + PostgreSQL/PostGIS
+%% - No U-Net, no Sentinel-1, no full automation scheduler in MVP
+
+flowchart TB
+
+    %% =========================
+    %% INPUT DATA
+    %% =========================
+    subgraph INPUT["Input Data"]
+        AOI_FILE["AOI GeoJSON / Shapefile<br/>KTH Nipah ±242 ha<br/>Conflict zone ±60–62 ha"]
+        DATE_PARAMS["Before-after Period<br/>Selected manually by admin"]
+        THRESHOLD_PARAMS["Detection Parameters<br/>Cloud threshold<br/>MVI / CMRI threshold<br/>Minimum hotspot area"]
+    end
+
+    %% =========================
+    %% GEE ANALYSIS
+    %% =========================
+    subgraph GEE["Google Earth Engine Processing"]
+        LOAD_AOI["Load AOI<br/>FeatureCollection / Geometry"]
+        LOAD_S2["Load Sentinel-2 Level-2A<br/>COPERNICUS/S2_SR_HARMONIZED"]
+        FILTER_DATA["Filter Data<br/>AOI + date range + cloud percentage"]
+        CLOUD_MASK["Cloud & Shadow Masking<br/>SCL-based mask for MVP"]
+        BEFORE_COMPOSITE["Build Before Composite<br/>median composite"]
+        AFTER_COMPOSITE["Build After Composite<br/>median composite"]
+
+        CALC_NDVI["Calculate NDVI<br/>supporting vegetation index"]
+        CALC_NDWI["Calculate NDWI<br/>supporting water index"]
+        CALC_CMRI["Calculate CMRI<br/>main mangrove-related index"]
+        CALC_MVI["Calculate MVI<br/>main mangrove-related index"]
+
+        DELTA_INDEX["Calculate Delta Indices<br/>delta MVI<br/>delta CMRI<br/>delta NDVI<br/>delta NDWI"]
+
+        CHANGE_MASK["Create Change Mask<br/>MVI / CMRI decline<br/>supported by NDVI / NDWI"]
+        WATER_MASK["Apply Supporting Mask<br/>reduce water / tide / pond false positives"]
+        CLEAN_NOISE["Clean Noise<br/>connected pixel filtering<br/>minimum area filtering"]
+        VECTORIZE["Vectorize Hotspots<br/>raster mask to polygon"]
+        ADD_ATTRIBUTES["Add Hotspot Attributes<br/>area_ha<br/>centroid<br/>index before-after values<br/>priority<br/>validation_status = detected"]
+    end
+
+    %% =========================
+    %% EXPORT OUTPUT
+    %% =========================
+    subgraph EXPORT["GEE Export Output"]
+        HOTSPOT_GEOJSON["Hotspot GeoJSON<br/>Required MVP output"]
+        STATIC_MAP["Static Map PNG / JPG<br/>Recommended for PDF report"]
+        TILE_URL["Raster Tile URL<br/>Optional for interactive layer"]
+        EXPORT_METADATA["Analysis Metadata<br/>dataset, period, threshold, scale, cloud parameter"]
+    end
+
+    %% =========================
+    %% QUALITY CHECK
+    %% =========================
+    subgraph QC["Manual Quality Check"]
+        CHECK_AOI["Check AOI Accuracy"]
+        CHECK_CLOUD["Check Cloud / Shadow Condition"]
+        CHECK_HOTSPOT["Check Hotspot Reasonableness"]
+        CHECK_GEOJSON["Validate GeoJSON<br/>QGIS / geojson.io"]
+    end
+
+    %% =========================
+    %% LARAVEL IMPORT
+    %% =========================
+    subgraph BACKEND["Laravel Import Layer"]
+        CREATE_RUN["Create Analysis Run<br/>AOI + period + parameters"]
+        IMPORT_GEOJSON["Import Hotspot GeoJSON<br/>manual / semi-manual MVP"]
+        PARSE_FEATURES["Parse GeoJSON Features<br/>geometry + properties"]
+        STORE_FILES["Store Export Files<br/>GeoJSON + static map + optional tile metadata"]
+        UPDATE_SUMMARY["Update Analysis Summary<br/>total_hotspots<br/>total_area_ha"]
+    end
+
+    %% =========================
+    %% DATABASE STORAGE
+    %% =========================
+    subgraph DB["PostgreSQL + PostGIS Storage"]
+        AOI_DB[("aoi_areas<br/>AOI MultiPolygon")]
+        ANALYSIS_DB[("analysis_runs<br/>before-after metadata")]
+        IMPORT_DB[("gee_imports<br/>import record")]
+        LAYER_DB[("satellite_layers<br/>static map / optional tile")]
+        HOTSPOT_DB[("hotspots<br/>centroid Point<br/>geom MultiPolygon<br/>MVI/CMRI/NDVI/NDWI values")]
+    end
+
+    %% =========================
+    %% DASHBOARD OUTPUT
+    %% =========================
+    subgraph UI["React + React Leaflet Output"]
+        MAP_DASHBOARD["WebGIS Dashboard<br/>AOI + hotspot map"]
+        POPUP_DETAIL["Hotspot Popup<br/>area, priority, status, delta MVI/CMRI"]
+        DETAIL_DRAWER["Hotspot Detail Drawer<br/>indices + geometry + validation action"]
+        SUMMARY_STRIP["Compact Summary<br/>total hotspot + total area + status count"]
+    end
+
+    %% =========================
+    %% HANDOFF
+    %% =========================
+    subgraph HANDOFF["Handoff to Next System Modules"]
+        VALIDATION_MODULE["Field Validation Module<br/>validator checks hotspot"]
+        REPORT_MODULE["PDF Report Module<br/>early indication report"]
+    end
+
+    %% =========================
+    %% FLOW
+    %% =========================
+    AOI_FILE --> LOAD_AOI
+    DATE_PARAMS --> FILTER_DATA
+    THRESHOLD_PARAMS --> CHANGE_MASK
+
+    LOAD_AOI --> LOAD_S2
+    LOAD_S2 --> FILTER_DATA
+    FILTER_DATA --> CLOUD_MASK
+
+    CLOUD_MASK --> BEFORE_COMPOSITE
+    CLOUD_MASK --> AFTER_COMPOSITE
+
+    BEFORE_COMPOSITE --> CALC_NDVI
+    BEFORE_COMPOSITE --> CALC_NDWI
+    BEFORE_COMPOSITE --> CALC_CMRI
+    BEFORE_COMPOSITE --> CALC_MVI
+
+    AFTER_COMPOSITE --> CALC_NDVI
+    AFTER_COMPOSITE --> CALC_NDWI
+    AFTER_COMPOSITE --> CALC_CMRI
+    AFTER_COMPOSITE --> CALC_MVI
+
+    CALC_NDVI --> DELTA_INDEX
+    CALC_NDWI --> DELTA_INDEX
+    CALC_CMRI --> DELTA_INDEX
+    CALC_MVI --> DELTA_INDEX
+
+    DELTA_INDEX --> CHANGE_MASK
+    CHANGE_MASK --> WATER_MASK
+    WATER_MASK --> CLEAN_NOISE
+    CLEAN_NOISE --> VECTORIZE
+    VECTORIZE --> ADD_ATTRIBUTES
+
+    ADD_ATTRIBUTES --> HOTSPOT_GEOJSON
+    ADD_ATTRIBUTES --> STATIC_MAP
+    ADD_ATTRIBUTES --> TILE_URL
+    ADD_ATTRIBUTES --> EXPORT_METADATA
+
+    HOTSPOT_GEOJSON --> CHECK_AOI
+    STATIC_MAP --> CHECK_CLOUD
+    HOTSPOT_GEOJSON --> CHECK_HOTSPOT
+    HOTSPOT_GEOJSON --> CHECK_GEOJSON
+
+    CHECK_AOI --> CREATE_RUN
+    CHECK_CLOUD --> CREATE_RUN
+    CHECK_HOTSPOT --> IMPORT_GEOJSON
+    CHECK_GEOJSON --> IMPORT_GEOJSON
+
+    CREATE_RUN --> ANALYSIS_DB
+    IMPORT_GEOJSON --> IMPORT_DB
+    IMPORT_GEOJSON --> PARSE_FEATURES
+    PARSE_FEATURES --> HOTSPOT_DB
+    STORE_FILES --> LAYER_DB
+    EXPORT_METADATA --> CREATE_RUN
+    HOTSPOT_GEOJSON --> STORE_FILES
+    STATIC_MAP --> STORE_FILES
+    TILE_URL --> STORE_FILES
+    PARSE_FEATURES --> UPDATE_SUMMARY
+    UPDATE_SUMMARY --> ANALYSIS_DB
+
+    AOI_FILE --> AOI_DB
+    AOI_DB --> CREATE_RUN
+
+    ANALYSIS_DB --> MAP_DASHBOARD
+    AOI_DB --> MAP_DASHBOARD
+    HOTSPOT_DB --> MAP_DASHBOARD
+    LAYER_DB --> MAP_DASHBOARD
+
+    MAP_DASHBOARD --> POPUP_DETAIL
+    POPUP_DETAIL --> DETAIL_DRAWER
+    HOTSPOT_DB --> SUMMARY_STRIP
+    ANALYSIS_DB --> SUMMARY_STRIP
+
+    DETAIL_DRAWER -. "Next module" .-> VALIDATION_MODULE
+    DETAIL_DRAWER -. "After validation / authorized role" .-> REPORT_MODULE
+
+    %% =========================
+    %% IMPORTANT NOTES
+    %% =========================
+    ADD_ATTRIBUTES -. "Initial hotspot status is detected" .-> HOTSPOT_DB
+    HOTSPOT_DB -. "Satellite result is early indication, not legal proof" .-> VALIDATION_MODULE
