@@ -1,0 +1,66 @@
+ANALYSIS RUN ID:
+001_KwalaSerapuh_MVP
+
+NAMA OUTPUT:
+hotspots_kwala_serapuh_run001_fix_geometry.geojson
+
+LOKASI:
+Kwala Serapuh, Langkat, Sumatera Utara
+
+STATUS AOI:
+Draft sementara / belum batas resmi
+
+AOI:
+Kwala Serapuh Draft AOI
+
+DATASET:
+COPERNICUS/S2_SR_HARMONIZED
+
+PERIODE BEFORE:
+2024-01-01 sampai 2024-04-30
+
+PERIODE AFTER:
+2025-01-01 sampai 2025-04-30
+
+MAX CLOUD COVERAGE:
+50%
+
+CLOUD MASKING:
+Sentinel-2 SCL
+Masked classes:
+- 3 = cloud shadow
+- 8 = cloud medium probability
+- 9 = cloud high probability
+- 10 = cirrus
+
+INDEKS YANG DIGUNAKAN:
+- NDVI
+- NDWI
+- CMRI
+- MVI
+
+RUMUS:
+NDVI = (B8 - B4) / (B8 + B4)
+NDWI = (B3 - B8) / (B3 + B8)
+CMRI = NDVI - NDWI
+MVI = (B8 - B3) / (B11 - B3)
+
+THRESHOLD:
+mviThreshold = -2.5
+cmriThreshold = -0.5
+wasVegetation = NDVI before > 0.3
+
+NOISE CLEANING:
+minConnectedPixels = 15
+
+JUMLAH HOTSPOT FINAL:
+16 polygon
+
+OUTPUT:
+- hotspots_kwala_serapuh_run001_fix_geometry.geojson
+- static_map_before_run001.png
+- static_map_after_run001.png
+- static_map_hotspot_overlay_run001.png
+
+CATATAN:
+Hasil ini adalah indikasi awal perubahan tutupan mangrove berdasarkan Sentinel-2 dan indeks spektral. Hasil ini bukan vonis hukum final dan tetap membutuhkan validasi lapangan.

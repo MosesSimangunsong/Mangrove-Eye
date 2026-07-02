@@ -17,6 +17,7 @@ class HotspotResource extends JsonResource
             'hotspot_code' => $this->hotspot_code,
             'analysis_run_id' => $this->analysis_run_id,
             'aoi_area_id' => $this->aoi_area_id,
+            'gee_import_id' => $this->gee_import_id,
             'analysis_run' => $this->whenLoaded('analysisRun', fn () => [
                 'id' => $this->analysisRun?->id,
                 'name' => $this->analysisRun?->name,
@@ -25,6 +26,7 @@ class HotspotResource extends JsonResource
                 'id' => $this->aoiArea?->id,
                 'name' => $this->aoiArea?->name,
             ]),
+            'validations' => $this->whenLoaded('validations', fn () => FieldValidationResource::collection($this->validations)->resolve()),
             'detected_at' => $this->detected_at?->toISOString(),
             'centroid' => $spatial->geometryFromModel($this->resource, 'centroid'),
             'geometry' => $spatial->geometryFromModel($this->resource, 'geom'),

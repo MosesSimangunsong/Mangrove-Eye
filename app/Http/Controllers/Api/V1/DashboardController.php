@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Api\ApiController;
+use App\Http\Requests\Api\V1\Dashboard\IndexDashboardLayerRequest;
 use App\Models\AnalysisRun;
 use App\Models\Hotspot;
+use App\Models\SatelliteLayer;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -48,6 +50,31 @@ class DashboardController extends ApiController
                 ] : null,
             ],
             message: 'Ringkasan dashboard berhasil diambil.',
+        );
+    }
+
+    public function layers(IndexDashboardLayerRequest $request): JsonResponse
+    {
+        $layers = SatelliteLayer::query()
+            ->where('analysis_run_id', (int) $request->input('analysis_run_id'))
+            ->latest('id')
+            ->get()
+            ->map(fn ($layer) => [
+                'id' => $layer->id,
+                'layer_name' => $layer->layer_name,
+                'layer_type' => $layer->layer_type,
+                'period_type' => $layer->period_type,
+                'storage_type' => $layer->storage_type,
+                'file_path' => $layer->file_path,
+                'tile_url' => $layer->tile_url,
+                'bbox' => $layer->bbox ?? new \stdClass(),
+                'visualization_params' => $layer->visualization_params ?? new \stdClass(),
+                'is_public' => $layer->is_public,
+            ])->all();
+
+        return $this->success(
+            data: $layers,
+            message: 'Layer berhasil diambil.',
         );
     }
 }

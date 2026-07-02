@@ -1,0 +1,4 @@
+AOI Kwala Serapuh masih berstatus draft/sementara.
+Koordinat AOI didefinisikan langsung di script mangrove_eye_mvp_gee.js.
+AOI ini belum menggunakan batas resmi KTH Nipah.
+Jika batas resmi tersedia, AOI perlu diganti dan analysis run perlu diulang.

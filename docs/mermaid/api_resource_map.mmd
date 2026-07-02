@@ -1,3 +1,4 @@
+%%{init: {"flowchart": {"curve": "linear", "nodeSpacing": 70, "rankSpacing": 90}}}%%
 %% api_resource_map.mmd
 %% MANGROVE-EYE MVP API Resource Map
 %% Scope:
@@ -13,18 +14,20 @@ flowchart LR
     %% FRONTEND AREAS
     %% =========================
     subgraph FE["Frontend Areas - React"]
+        direction TB
+        FE_AUTH["Auth Pages<br/>login, logout, current user"]
         FE_PUBLIC["Public Dashboard<br/>generalized WebGIS"]
         FE_INTERNAL["Internal WebGIS Dashboard<br/>map-first dashboard"]
         FE_ADMIN["Admin Management UI<br/>AOI, analysis, import, users"]
         FE_VALIDATOR["Validator UI<br/>field validation"]
         FE_NGO["NGO / Advocate UI<br/>validation review + PDF"]
-        FE_AUTH["Auth Pages<br/>login, logout, current user"]
     end
 
     %% =========================
-    %% API ENTRY
+    %% API ENTRY LAYER
     %% =========================
     subgraph API_ENTRY["API Entry Layer"]
+        direction TB
         API_BASE["Base Path<br/>/api/v1"]
         PUBLIC_API["Public API<br/>/api/v1/public"]
         INTERNAL_API["Internal API<br/>/api/v1"]
@@ -34,25 +37,38 @@ flowchart LR
     end
 
     %% =========================
-    %% API RESOURCE GROUPS
+    %% AUTH API
     %% =========================
     subgraph AUTH_API["Auth API"]
+        direction TB
         AUTH_LOGIN["POST /auth/login"]
         AUTH_LOGOUT["POST /auth/logout"]
         AUTH_ME["GET /auth/me"]
     end
 
+    %% =========================
+    %% PUBLIC API
+    %% =========================
     subgraph PUBLIC_DASHBOARD_API["Public Dashboard API"]
+        direction TB
         PUB_SUMMARY["GET /public/dashboard/summary"]
         PUB_HOTSPOTS["GET /public/hotspots<br/>generalized location only"]
     end
 
+    %% =========================
+    %% INTERNAL DASHBOARD API
+    %% =========================
     subgraph DASHBOARD_API["Internal Dashboard API"]
+        direction TB
         DASH_SUMMARY["GET /dashboard/summary"]
         DASH_LAYERS["GET /dashboard/layers"]
     end
 
+    %% =========================
+    %% AOI API
+    %% =========================
     subgraph AOI_API["AOI API"]
+        direction TB
         AOI_LIST["GET /aoi-areas"]
         AOI_DETAIL["GET /aoi-areas/{id}"]
         AOI_CREATE["POST /aoi-areas"]
@@ -61,7 +77,11 @@ flowchart LR
         AOI_IMPORT["POST /aoi-areas/import<br/>GeoJSON upload"]
     end
 
+    %% =========================
+    %% ANALYSIS RUN API
+    %% =========================
     subgraph ANALYSIS_API["Analysis Run API"]
+        direction TB
         RUN_LIST["GET /analysis-runs"]
         RUN_DETAIL["GET /analysis-runs/{id}"]
         RUN_CREATE["POST /analysis-runs"]
@@ -69,48 +89,86 @@ flowchart LR
         RUN_DELETE["DELETE /analysis-runs/{id}"]
     end
 
+    %% =========================
+    %% GEE IMPORT & LAYER API
+    %% =========================
     subgraph GEE_API["GEE Import & Layer API"]
+        direction TB
         GEE_IMPORT["POST /analysis-runs/{id}/gee-imports/hotspots<br/>import hotspot GeoJSON"]
         GEE_IMPORT_LIST["GET /analysis-runs/{id}/gee-imports"]
         LAYER_CREATE["POST /analysis-runs/{id}/satellite-layers"]
     end
 
+    %% =========================
+    %% HOTSPOT API
+    %% =========================
     subgraph HOTSPOT_API["Hotspot API"]
+        direction TB
         HOTSPOT_LIST["GET /hotspots<br/>json or geojson"]
         HOTSPOT_DETAIL["GET /hotspots/{id}"]
         HOTSPOT_STATUS["PATCH /hotspots/{id}/status"]
         HOTSPOT_PRIORITY["PATCH /hotspots/{id}/priority"]
     end
 
+    %% =========================
+    %% FIELD VALIDATION API
+    %% =========================
     subgraph VALIDATION_API["Field Validation API"]
+        direction TB
         VALIDATION_CREATE["POST /hotspots/{id}/field-validations"]
         VALIDATION_LIST["GET /hotspots/{id}/field-validations"]
         VALIDATION_UPDATE["PUT /field-validations/{id}"]
         PHOTO_UPLOAD["POST /field-validations/{id}/photos"]
     end
 
+    %% =========================
+    %% REPORT API
+    %% =========================
     subgraph REPORT_API["Report API"]
+        direction TB
         REPORT_HOTSPOT_CREATE["POST /hotspots/{id}/reports"]
         REPORT_ANALYSIS_CREATE["POST /analysis-runs/{id}/reports<br/>optional MVP"]
         REPORT_LIST["GET /reports"]
         REPORT_DOWNLOAD["GET /reports/{id}/download"]
     end
 
+    %% =========================
+    %% USER & ROLE API
+    %% =========================
     subgraph USER_API["User & Role API"]
+        direction TB
         USER_LIST["GET /users"]
         USER_CREATE["POST /users"]
         USER_ROLES_UPDATE["PATCH /users/{id}/roles"]
         ROLE_LIST["GET /roles"]
     end
 
+    %% =========================
+    %% AUDIT LOG API
+    %% =========================
     subgraph AUDIT_API["Audit Log API"]
+        direction TB
         AUDIT_LIST["GET /audit-logs"]
+    end
+
+    %% =========================
+    %% RBAC ACCESS POLICY
+    %% =========================
+    subgraph ACCESS_POLICY["RBAC Protection by Resource"]
+        direction TB
+        RBAC_PUBLIC["public_viewer:<br/>public endpoints only"]
+        RBAC_VALIDATOR["validator:<br/>hotspot detail + validation"]
+        RBAC_NGO["ngo_advocate:<br/>validated data + reports"]
+        RBAC_ADMIN_AOI["admin:<br/>AOI, analysis, import, users"]
+        RBAC_ADMIN_GEE["admin:<br/>analysis and GEE import"]
+        RBAC_SUPER["super_admin:<br/>full MVP access"]
     end
 
     %% =========================
     %% DATABASE RESOURCE GROUPS
     %% =========================
     subgraph DB["PostgreSQL + PostGIS Tables"]
+        direction TB
         DB_USERS[("users<br/>roles<br/>permissions")]
         DB_AOI[("aoi_areas")]
         DB_RUNS[("analysis_runs")]
@@ -124,13 +182,22 @@ flowchart LR
     end
 
     %% =========================
-    %% STORAGE
+    %% PRIVATE FILE STORAGE
     %% =========================
     subgraph STORAGE["Private File Storage"]
+        direction TB
         STORAGE_AOI["AOI files<br/>GeoJSON / Shapefile"]
         STORAGE_GEE["GEE exports<br/>GeoJSON / static map / optional tile metadata"]
         STORAGE_PHOTOS["Validation photos"]
         STORAGE_REPORTS["PDF reports"]
+    end
+
+    %% =========================
+    %% AUDITABLE ACTIONS
+    %% =========================
+    subgraph AUDITABLE_GROUP["Auditable Actions"]
+        direction TB
+        AUDITABLE["AOI create/import<br/>analysis create<br/>GEE import<br/>hotspot status<br/>validation create<br/>photo upload<br/>report create/download<br/>user role update"]
     end
 
     %% =========================
@@ -143,7 +210,10 @@ flowchart LR
     FE_VALIDATOR --> INTERNAL_API
     FE_NGO --> INTERNAL_API
 
-    API_BASE --> RESPONSE_FORMAT
+    API_BASE --> AUTH_LOGIN
+    API_BASE --> PUBLIC_API
+    API_BASE --> INTERNAL_API
+
     PUBLIC_API --> RESPONSE_FORMAT
     INTERNAL_API --> AUTH_MW
     AUTH_MW --> RBAC_MW
@@ -152,10 +222,6 @@ flowchart LR
     %% =========================
     %% AUTH ROUTING
     %% =========================
-    FE_AUTH --> AUTH_LOGIN
-    FE_AUTH --> AUTH_LOGOUT
-    FE_AUTH --> AUTH_ME
-
     AUTH_LOGIN --> DB_USERS
     AUTH_LOGOUT --> DB_USERS
     AUTH_ME --> DB_USERS
@@ -163,8 +229,8 @@ flowchart LR
     %% =========================
     %% PUBLIC API ROUTING
     %% =========================
-    FE_PUBLIC --> PUB_SUMMARY
-    FE_PUBLIC --> PUB_HOTSPOTS
+    PUBLIC_API --> PUB_SUMMARY
+    PUBLIC_API --> PUB_HOTSPOTS
 
     PUB_SUMMARY --> DB_RUNS
     PUB_SUMMARY --> DB_HOTSPOTS
@@ -173,48 +239,31 @@ flowchart LR
     PUB_HOTSPOTS -. "redact precise geometry<br/>return generalized point only" .-> FE_PUBLIC
 
     %% =========================
-    %% INTERNAL DASHBOARD ROUTING
+    %% INTERNAL API ROUTING
     %% =========================
-    FE_INTERNAL --> DASH_SUMMARY
-    FE_INTERNAL --> DASH_LAYERS
-    FE_INTERNAL --> HOTSPOT_LIST
-    FE_INTERNAL --> HOTSPOT_DETAIL
-    FE_INTERNAL --> AOI_LIST
-    FE_INTERNAL --> RUN_LIST
+    RBAC_MW --> AUTH_LOGOUT
+    RBAC_MW --> AUTH_ME
+    RBAC_MW --> DASH_SUMMARY
+    RBAC_MW --> DASH_LAYERS
+    RBAC_MW --> AOI_LIST
+    RBAC_MW --> RUN_LIST
+    RBAC_MW --> GEE_IMPORT
+    RBAC_MW --> HOTSPOT_LIST
+    RBAC_MW --> VALIDATION_CREATE
+    RBAC_MW --> REPORT_HOTSPOT_CREATE
+    RBAC_MW --> USER_LIST
+    RBAC_MW --> AUDIT_LIST
 
+    %% =========================
+    %% INTERNAL DASHBOARD DATA
+    %% =========================
     DASH_SUMMARY --> DB_RUNS
     DASH_SUMMARY --> DB_HOTSPOTS
     DASH_LAYERS --> DB_LAYERS
 
     %% =========================
-    %% ADMIN API ROUTING
+    %% AOI DATA
     %% =========================
-    FE_ADMIN --> AOI_LIST
-    FE_ADMIN --> AOI_DETAIL
-    FE_ADMIN --> AOI_CREATE
-    FE_ADMIN --> AOI_UPDATE
-    FE_ADMIN --> AOI_DELETE
-    FE_ADMIN --> AOI_IMPORT
-
-    FE_ADMIN --> RUN_LIST
-    FE_ADMIN --> RUN_DETAIL
-    FE_ADMIN --> RUN_CREATE
-    FE_ADMIN --> RUN_UPDATE
-    FE_ADMIN --> RUN_DELETE
-
-    FE_ADMIN --> GEE_IMPORT
-    FE_ADMIN --> GEE_IMPORT_LIST
-    FE_ADMIN --> LAYER_CREATE
-
-    FE_ADMIN --> HOTSPOT_STATUS
-    FE_ADMIN --> HOTSPOT_PRIORITY
-
-    FE_ADMIN --> USER_LIST
-    FE_ADMIN --> USER_CREATE
-    FE_ADMIN --> USER_ROLES_UPDATE
-    FE_ADMIN --> ROLE_LIST
-    FE_ADMIN --> AUDIT_LIST
-
     AOI_LIST --> DB_AOI
     AOI_DETAIL --> DB_AOI
     AOI_CREATE --> DB_AOI
@@ -223,12 +272,18 @@ flowchart LR
     AOI_IMPORT --> DB_AOI
     AOI_IMPORT --> STORAGE_AOI
 
+    %% =========================
+    %% ANALYSIS RUN DATA
+    %% =========================
     RUN_LIST --> DB_RUNS
     RUN_DETAIL --> DB_RUNS
     RUN_CREATE --> DB_RUNS
     RUN_UPDATE --> DB_RUNS
     RUN_DELETE --> DB_RUNS
 
+    %% =========================
+    %% GEE IMPORT & LAYER DATA
+    %% =========================
     GEE_IMPORT --> DB_IMPORTS
     GEE_IMPORT --> DB_HOTSPOTS
     GEE_IMPORT --> STORAGE_GEE
@@ -237,28 +292,17 @@ flowchart LR
     LAYER_CREATE --> DB_LAYERS
     LAYER_CREATE --> STORAGE_GEE
 
+    %% =========================
+    %% HOTSPOT DATA
+    %% =========================
+    HOTSPOT_LIST --> DB_HOTSPOTS
+    HOTSPOT_DETAIL --> DB_HOTSPOTS
     HOTSPOT_STATUS --> DB_HOTSPOTS
     HOTSPOT_PRIORITY --> DB_HOTSPOTS
 
-    USER_LIST --> DB_USERS
-    USER_CREATE --> DB_USERS
-    USER_ROLES_UPDATE --> DB_USERS
-    ROLE_LIST --> DB_USERS
-    AUDIT_LIST --> DB_AUDIT
-
     %% =========================
-    %% VALIDATOR API ROUTING
+    %% VALIDATION DATA
     %% =========================
-    FE_VALIDATOR --> HOTSPOT_LIST
-    FE_VALIDATOR --> HOTSPOT_DETAIL
-    FE_VALIDATOR --> VALIDATION_CREATE
-    FE_VALIDATOR --> VALIDATION_LIST
-    FE_VALIDATOR --> VALIDATION_UPDATE
-    FE_VALIDATOR --> PHOTO_UPLOAD
-
-    HOTSPOT_LIST --> DB_HOTSPOTS
-    HOTSPOT_DETAIL --> DB_HOTSPOTS
-
     VALIDATION_CREATE --> DB_VALIDATIONS
     VALIDATION_CREATE --> DB_HOTSPOTS
     VALIDATION_LIST --> DB_VALIDATIONS
@@ -269,15 +313,8 @@ flowchart LR
     PHOTO_UPLOAD --> STORAGE_PHOTOS
 
     %% =========================
-    %% NGO / REPORT ROUTING
+    %% REPORT DATA
     %% =========================
-    FE_NGO --> HOTSPOT_LIST
-    FE_NGO --> HOTSPOT_DETAIL
-    FE_NGO --> VALIDATION_LIST
-    FE_NGO --> REPORT_HOTSPOT_CREATE
-    FE_NGO --> REPORT_LIST
-    FE_NGO --> REPORT_DOWNLOAD
-
     REPORT_HOTSPOT_CREATE --> DB_REPORTS
     REPORT_HOTSPOT_CREATE --> DB_HOTSPOTS
     REPORT_HOTSPOT_CREATE --> DB_VALIDATIONS
@@ -292,25 +329,59 @@ flowchart LR
     REPORT_DOWNLOAD --> STORAGE_REPORTS
 
     %% =========================
-    %% RBAC PROTECTION BY RESOURCE
+    %% USER, ROLE, AUDIT DATA
     %% =========================
-    RBAC_MW -. "public_viewer:<br/>public endpoints only" .-> PUBLIC_DASHBOARD_API
-    RBAC_MW -. "validator:<br/>hotspot detail + validation" .-> VALIDATION_API
-    RBAC_MW -. "ngo_advocate:<br/>validated data + reports" .-> REPORT_API
-    RBAC_MW -. "admin:<br/>AOI, analysis, import, users" .-> AOI_API
-    RBAC_MW -. "admin:<br/>analysis and GEE import" .-> GEE_API
-    RBAC_MW -. "super_admin:<br/>full MVP access" .-> USER_API
+    USER_LIST --> DB_USERS
+    USER_CREATE --> DB_USERS
+    USER_ROLES_UPDATE --> DB_USERS
+    ROLE_LIST --> DB_USERS
+    AUDIT_LIST --> DB_AUDIT
+
+    AUDITABLE --> DB_AUDIT
 
     %% =========================
-    %% AUDITABLE ACTIONS
+    %% RBAC POLICY LINKS
     %% =========================
-    AOI_CREATE -. "audit" .-> DB_AUDIT
-    AOI_IMPORT -. "audit" .-> DB_AUDIT
-    RUN_CREATE -. "audit" .-> DB_AUDIT
-    GEE_IMPORT -. "audit" .-> DB_AUDIT
-    HOTSPOT_STATUS -. "audit" .-> DB_AUDIT
-    VALIDATION_CREATE -. "audit" .-> DB_AUDIT
-    PHOTO_UPLOAD -. "audit" .-> DB_AUDIT
-    REPORT_HOTSPOT_CREATE -. "audit" .-> DB_AUDIT
-    REPORT_DOWNLOAD -. "audit" .-> DB_AUDIT
-    USER_ROLES_UPDATE -. "audit" .-> DB_AUDIT
+    RBAC_MW -.-> RBAC_PUBLIC
+    RBAC_MW -.-> RBAC_VALIDATOR
+    RBAC_MW -.-> RBAC_NGO
+    RBAC_MW -.-> RBAC_ADMIN_AOI
+    RBAC_MW -.-> RBAC_ADMIN_GEE
+    RBAC_MW -.-> RBAC_SUPER
+
+    RBAC_PUBLIC -.-> PUBLIC_DASHBOARD_API
+    RBAC_VALIDATOR -.-> HOTSPOT_API
+    RBAC_VALIDATOR -.-> VALIDATION_API
+    RBAC_NGO -.-> VALIDATION_API
+    RBAC_NGO -.-> REPORT_API
+    RBAC_ADMIN_AOI -.-> AOI_API
+    RBAC_ADMIN_AOI -.-> ANALYSIS_API
+    RBAC_ADMIN_AOI -.-> USER_API
+    RBAC_ADMIN_GEE -.-> GEE_API
+    RBAC_SUPER -.-> USER_API
+    RBAC_SUPER -.-> AUDIT_API
+
+    %% =========================
+    %% STYLES
+    %% =========================
+    classDef frontend fill:#e8f3ff,stroke:#2563eb,stroke-width:1px,color:#0f172a;
+    classDef entry fill:#fef9c3,stroke:#ca8a04,stroke-width:1px,color:#0f172a;
+    classDef api fill:#ecfdf5,stroke:#059669,stroke-width:1px,color:#0f172a;
+    classDef rbac fill:#f5f3ff,stroke:#7c3aed,stroke-width:1px,color:#0f172a;
+    classDef database fill:#f1f5f9,stroke:#475569,stroke-width:1px,color:#0f172a;
+    classDef storage fill:#fff7ed,stroke:#ea580c,stroke-width:1px,color:#0f172a;
+    classDef audit fill:#fef2f2,stroke:#dc2626,stroke-width:1px,color:#0f172a;
+
+    class FE_AUTH,FE_PUBLIC,FE_INTERNAL,FE_ADMIN,FE_VALIDATOR,FE_NGO frontend;
+    class API_BASE,PUBLIC_API,INTERNAL_API,AUTH_MW,RBAC_MW,RESPONSE_FORMAT entry;
+    class AUTH_LOGIN,AUTH_LOGOUT,AUTH_ME,PUB_SUMMARY,PUB_HOTSPOTS,DASH_SUMMARY,DASH_LAYERS api;
+    class AOI_LIST,AOI_DETAIL,AOI_CREATE,AOI_UPDATE,AOI_DELETE,AOI_IMPORT api;
+    class RUN_LIST,RUN_DETAIL,RUN_CREATE,RUN_UPDATE,RUN_DELETE api;
+    class GEE_IMPORT,GEE_IMPORT_LIST,LAYER_CREATE,HOTSPOT_LIST,HOTSPOT_DETAIL,HOTSPOT_STATUS,HOTSPOT_PRIORITY api;
+    class VALIDATION_CREATE,VALIDATION_LIST,VALIDATION_UPDATE,PHOTO_UPLOAD api;
+    class REPORT_HOTSPOT_CREATE,REPORT_ANALYSIS_CREATE,REPORT_LIST,REPORT_DOWNLOAD api;
+    class USER_LIST,USER_CREATE,USER_ROLES_UPDATE,ROLE_LIST,AUDIT_LIST api;
+    class RBAC_PUBLIC,RBAC_VALIDATOR,RBAC_NGO,RBAC_ADMIN_AOI,RBAC_ADMIN_GEE,RBAC_SUPER rbac;
+    class DB_USERS,DB_AOI,DB_RUNS,DB_IMPORTS,DB_LAYERS,DB_HOTSPOTS,DB_VALIDATIONS,DB_PHOTOS,DB_REPORTS,DB_AUDIT database;
+    class STORAGE_AOI,STORAGE_GEE,STORAGE_PHOTOS,STORAGE_REPORTS storage;
+    class AUDITABLE audit;

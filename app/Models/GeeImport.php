@@ -21,6 +21,8 @@ class GeeImport extends Model
         'status',
         'total_features',
         'error_message',
+        'metadata',
+        'import_summary',
         'imported_by',
         'imported_at',
     ];
@@ -28,6 +30,8 @@ class GeeImport extends Model
     protected function casts(): array
     {
         return [
+            'metadata' => 'array',
+            'import_summary' => 'array',
             'imported_at' => 'datetime',
         ];
     }

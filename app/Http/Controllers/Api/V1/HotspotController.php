@@ -10,6 +10,7 @@ use App\Http\Resources\Api\V1\HotspotResource;
 use App\Models\Hotspot;
 use App\Services\AuditLogService;
 use App\Services\SpatialService;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Http\JsonResponse;
 
 class HotspotController extends ApiController
@@ -44,14 +45,46 @@ class HotspotController extends ApiController
             $query->where('priority', $request->string('priority'));
         }
 
+        if ($request->filled('bbox') && $this->spatialService->isPgsql()) {
+            $bbox = $this->parseBbox($request->string('bbox')->toString());
+
+            if ($bbox !== null) {
+                $query->whereRaw(
+                    "ST_Intersects(centroid, ST_MakeEnvelope(?, ?, ?, ?, 4326))",
+                    $bbox,
+                );
+            }
+        }
+
         if ($request->string('format')->toString() === 'geojson') {
+            $hotspots = $query->get();
+
+            if ($request->filled('bbox') && ! $this->spatialService->isPgsql()) {
+                $bbox = $this->parseBbox($request->string('bbox')->toString());
+                $hotspots = $this->filterByBbox($hotspots, $bbox);
+            }
+
             return $this->success(
-                data: $this->toGeoJson($query->get()),
+                data: $this->toGeoJson($hotspots),
                 message: 'GeoJSON hotspot berhasil diambil.',
             );
         }
 
-        $paginator = $query->paginate($request->integer('per_page', 15));
+        if ($request->filled('bbox') && ! $this->spatialService->isPgsql()) {
+            $bbox = $this->parseBbox($request->string('bbox')->toString());
+            $collection = $this->filterByBbox($query->get(), $bbox)->values();
+            $perPage = $request->integer('per_page', 15);
+            $currentPage = LengthAwarePaginator::resolveCurrentPage();
+            $items = $collection->forPage($currentPage, $perPage)->values();
+            $paginator = new LengthAwarePaginator(
+                $items,
+                $collection->count(),
+                $perPage,
+                $currentPage,
+            );
+        } else {
+            $paginator = $query->paginate($request->integer('per_page', 15));
+        }
 
         return $this->success(
             data: HotspotResource::collection($paginator->items())->resolve(),
@@ -68,7 +101,22 @@ class HotspotController extends ApiController
     public function show(Hotspot $hotspot): JsonResponse
     {
         $query = Hotspot::query()
-            ->with(['analysisRun:id,name', 'aoiArea:id,name'])
+            ->with([
+                'analysisRun:id,name',
+                'aoiArea:id,name',
+                'validations' => function ($validationQuery) {
+                    $validationQuery
+                        ->with([
+                            'validator:id,name',
+                            'photos' => function ($photoQuery) {
+                                $this->spatialService->applyGeoJsonSelect($photoQuery, ['photo_point']);
+                            },
+                        ])
+                        ->latest('id');
+
+                    $this->spatialService->applyGeoJsonSelect($validationQuery, ['validation_point']);
+                },
+            ])
             ->whereKey($hotspot->getKey());
         $this->spatialService->applyGeoJsonSelect($query, ['centroid', 'geom']);
         $hotspot = $query->firstOrFail();
@@ -146,8 +194,10 @@ class HotspotController extends ApiController
                     'area_ha' => $hotspot->area_ha !== null ? (float) $hotspot->area_ha : null,
                     'priority' => $hotspot->priority,
                     'validation_status' => $hotspot->validation_status,
+                    'detected_at' => $hotspot->detected_at?->toDateString(),
                     'mvi_delta' => $hotspot->mvi_delta !== null ? (float) $hotspot->mvi_delta : null,
                     'cmri_delta' => $hotspot->cmri_delta !== null ? (float) $hotspot->cmri_delta : null,
+                    'centroid' => $this->spatialService->geometryFromModel($hotspot, 'centroid'),
                 ],
                 'geometry' => $this->spatialService->geometryFromModel($hotspot, 'geom'),
             ];
@@ -157,5 +207,39 @@ class HotspotController extends ApiController
             'type' => 'FeatureCollection',
             'features' => $features,
         ];
+    }
+
+    protected function parseBbox(?string $bbox): ?array
+    {
+        if (! is_string($bbox) || trim($bbox) === '') {
+            return null;
+        }
+
+        $parts = array_map('trim', explode(',', $bbox));
+
+        if (count($parts) !== 4 || collect($parts)->contains(fn ($part) => ! is_numeric($part))) {
+            return null;
+        }
+
+        return array_map('floatval', $parts);
+    }
+
+    protected function filterByBbox(iterable $hotspots, ?array $bbox): \Illuminate\Support\Collection
+    {
+        return collect($hotspots)->filter(function ($hotspot) use ($bbox) {
+            if ($bbox === null) {
+                return true;
+            }
+
+            $centroid = $this->spatialService->geometryFromModel($hotspot, 'centroid');
+
+            if (($centroid['type'] ?? null) !== 'Point') {
+                return false;
+            }
+
+            [$lng, $lat] = $centroid['coordinates'];
+
+            return $lng >= $bbox[0] && $lng <= $bbox[2] && $lat >= $bbox[1] && $lat <= $bbox[3];
+        });
     }
 }

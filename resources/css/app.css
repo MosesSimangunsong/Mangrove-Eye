@@ -1,3 +1,1144 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+:root {
+    --bg-main: #f4efe4;
+    --bg-panel: rgba(255, 250, 242, 0.88);
+    --bg-panel-strong: rgba(255, 252, 247, 0.96);
+    --line-soft: rgba(77, 58, 34, 0.12);
+    --text-main: #1f2933;
+    --text-soft: #5b6470;
+    --brand-deep: #184e3f;
+    --brand-bright: #d97706;
+    --brand-accent: #0f766e;
+    --brand-rose: #9a3412;
+    --shadow-soft: 0 18px 42px rgba(26, 32, 44, 0.09);
+}
+
+html,
+body,
+#app {
+    min-height: 100%;
+}
+
+body {
+    margin: 0;
+    color: var(--text-main);
+    background:
+        radial-gradient(circle at top left, rgba(245, 158, 11, 0.14), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(15, 118, 110, 0.18), transparent 34%),
+        linear-gradient(180deg, #f9f3e8 0%, #f1ede5 48%, #ebefe7 100%);
+    font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+.internal-app-shell {
+    min-height: 100vh;
+}
+
+.internal-nav {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.5rem;
+    backdrop-filter: blur(18px);
+    background: rgba(250, 246, 239, 0.88);
+    border-bottom: 1px solid var(--line-soft);
+}
+
+.brand-block {
+    display: flex;
+    align-items: center;
+    gap: 0.875rem;
+    text-decoration: none;
+    color: var(--text-main);
+}
+
+.brand-block strong,
+.user-trigger strong {
+    display: block;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+}
+
+.brand-block small,
+.user-trigger small {
+    display: block;
+    color: var(--text-soft);
+    font-size: 0.74rem;
+}
+
+.brand-mark {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 0.95rem;
+    background: linear-gradient(135deg, var(--brand-deep), #0f766e);
+    color: #f8fafc;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    box-shadow: var(--shadow-soft);
+}
+
+.nav-links,
+.nav-user {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.nav-chip {
+    border-radius: 999px;
+    padding: 0.55rem 0.95rem;
+    text-decoration: none;
+    color: var(--text-soft);
+    font-size: 0.88rem;
+    border: 1px solid transparent;
+    transition: all 180ms ease;
+}
+
+.nav-chip:hover,
+.nav-chip.is-active {
+    color: var(--text-main);
+    border-color: rgba(15, 118, 110, 0.18);
+    background: rgba(15, 118, 110, 0.08);
+}
+
+.user-trigger,
+.mobile-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.7rem;
+    border: 1px solid var(--line-soft);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.8);
+    padding: 0.55rem 0.95rem;
+    color: var(--text-main);
+}
+
+.mobile-menu-trigger {
+    display: none;
+}
+
+.mobile-sheet {
+    margin: 0 1rem;
+    border-radius: 1.25rem;
+    border: 1px solid var(--line-soft);
+    background: var(--bg-panel-strong);
+    box-shadow: var(--shadow-soft);
+    padding: 0.5rem;
+}
+
+.mobile-link {
+    display: block;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    border-radius: 0.9rem;
+    text-decoration: none;
+    color: var(--text-main);
+}
+
+.webgis-shell {
+    padding: 1.25rem;
+}
+
+.public-shell {
+    min-height: 100vh;
+    padding: 1.25rem;
+}
+
+.public-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+
+.public-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.public-hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 21rem;
+    gap: 1rem;
+    align-items: stretch;
+    margin-bottom: 1.25rem;
+}
+
+.public-hero h1 {
+    margin: 0;
+    font-size: clamp(2rem, 3vw, 3.2rem);
+    line-height: 1.02;
+    color: #12212c;
+}
+
+.public-hero-note {
+    border-radius: 1.5rem;
+    border: 1px solid var(--line-soft);
+    background: var(--bg-panel-strong);
+    box-shadow: var(--shadow-soft);
+    padding: 1.1rem;
+}
+
+.public-hero-note strong {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: var(--brand-deep);
+}
+
+.public-hero-note p,
+.public-disclaimer {
+    margin: 0;
+    line-height: 1.55;
+}
+
+.public-layout {
+    display: grid;
+    grid-template-columns: 18rem minmax(0, 1fr);
+    gap: 1rem;
+    min-height: calc(100vh - 18rem);
+}
+
+.public-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.public-map-frame {
+    min-height: 42rem;
+}
+
+.webgis-topbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 1.5rem;
+    align-items: end;
+    margin-bottom: 1.25rem;
+}
+
+.webgis-kicker,
+.panel-kicker {
+    margin: 0 0 0.45rem;
+    color: var(--brand-accent);
+    font-size: 0.72rem;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+}
+
+.webgis-topbar h1,
+.left-panel h2,
+.right-drawer h2 {
+    margin: 0;
+    font-size: clamp(1.8rem, 2.4vw, 2.6rem);
+    line-height: 1.05;
+    color: #12212c;
+}
+
+.webgis-subtitle,
+.drawer-muted {
+    max-width: 52rem;
+    margin: 0.7rem 0 0;
+    color: var(--text-soft);
+    line-height: 1.55;
+}
+
+.webgis-select-group {
+    min-width: 18rem;
+    padding: 1rem 1.05rem;
+    border-radius: 1.3rem;
+    border: 1px solid var(--line-soft);
+    background: var(--bg-panel);
+    box-shadow: var(--shadow-soft);
+}
+
+.webgis-select-group label {
+    display: block;
+    margin-bottom: 0.45rem;
+    color: var(--text-soft);
+    font-size: 0.78rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+}
+
+.webgis-select-group select {
+    width: 100%;
+    border: none;
+    background: transparent;
+    font-size: 0.98rem;
+    color: var(--text-main);
+    outline: none;
+}
+
+.metric-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1.25rem;
+}
+
+.metric-tile {
+    border-radius: 1.4rem;
+    padding: 1rem 1.1rem;
+    border: 1px solid var(--line-soft);
+    background: var(--bg-panel-strong);
+    box-shadow: var(--shadow-soft);
+}
+
+.metric-tile p {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+}
+
+.metric-tile strong {
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.metric-tile small {
+    display: block;
+    margin-top: 0.55rem;
+    color: var(--text-soft);
+    line-height: 1.45;
+}
+
+.metric-tile-ember strong {
+    color: var(--brand-rose);
+}
+
+.metric-tile-teal strong {
+    color: var(--brand-deep);
+}
+
+.webgis-layout {
+    display: grid;
+    grid-template-columns: 18rem minmax(0, 1fr) 21rem;
+    gap: 1rem;
+    min-height: calc(100vh - 15rem);
+}
+
+.left-panel,
+.right-drawer {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.panel-card,
+.drawer-card {
+    border-radius: 1.5rem;
+    border: 1px solid var(--line-soft);
+    background: var(--bg-panel);
+    box-shadow: var(--shadow-soft);
+    padding: 1.1rem;
+    backdrop-filter: blur(12px);
+}
+
+.panel-heading-row {
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 0.85rem;
+}
+
+.panel-heading-row h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    color: #12212c;
+}
+
+.panel-caption,
+.drawer-caption {
+    color: var(--text-soft);
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
+.panel-action-link {
+    border: none;
+    background: transparent;
+    color: var(--brand-accent);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.panel-action-link:disabled {
+    color: rgba(91, 100, 112, 0.55);
+    cursor: default;
+}
+
+.meta-row,
+.status-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    border-top: 1px solid rgba(91, 100, 112, 0.12);
+    color: var(--text-soft);
+}
+
+.meta-row strong,
+.status-list strong,
+.drawer-grid strong {
+    color: var(--text-main);
+}
+
+.layer-list,
+.status-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.layer-list li {
+    padding: 0.8rem 0;
+    border-top: 1px solid rgba(91, 100, 112, 0.12);
+}
+
+.layer-list strong {
+    display: block;
+    margin-bottom: 0.2rem;
+}
+
+.panel-divider {
+    height: 1px;
+    margin: 1rem 0;
+    background: rgba(91, 100, 112, 0.12);
+}
+
+.layer-list span {
+    color: var(--text-soft);
+    font-size: 0.88rem;
+}
+
+.map-stage {
+    min-width: 0;
+}
+
+.map-frame {
+    position: relative;
+    height: 100%;
+    min-height: 38rem;
+    overflow: hidden;
+    border-radius: 1.9rem;
+    border: 1px solid rgba(20, 34, 28, 0.12);
+    background:
+        linear-gradient(180deg, rgba(255, 250, 242, 0.25), rgba(255, 250, 242, 0)),
+        #dce7de;
+    box-shadow: 0 32px 60px rgba(17, 24, 39, 0.12);
+}
+
+.webgis-map-shell {
+    width: 100%;
+    height: 100%;
+}
+
+.map-legend {
+    position: absolute;
+    left: 1rem;
+    bottom: 1rem;
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-radius: 1.2rem;
+    background: rgba(255, 252, 247, 0.94);
+    border: 1px solid var(--line-soft);
+    font-size: 0.82rem;
+    box-shadow: var(--shadow-soft);
+    z-index: 500;
+    max-width: 16rem;
+}
+
+.map-legend strong {
+    font-size: 0.88rem;
+    color: #12212c;
+}
+
+.legend-section {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.legend-label {
+    font-size: 0.7rem;
+    color: var(--text-soft);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.legend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.legend-note {
+    margin: 0;
+    color: var(--text-soft);
+    line-height: 1.45;
+}
+
+.legend-swatch {
+    width: 1rem;
+    height: 1rem;
+    border-radius: 999px;
+}
+
+.legend-swatch.priority-high-swatch { background: #ea580c; }
+.legend-swatch.priority-medium-swatch { background: #f59e0b; }
+.legend-swatch.priority-low-swatch { background: #14b8a6; }
+.legend-swatch.layer-aoi { background: rgba(15, 118, 110, 0.72); }
+.legend-swatch.layer-selected { background: rgba(107, 33, 10, 0.86); }
+
+.legend-chip {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.6rem;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.status-detected { background: rgba(251, 191, 36, 0.18); color: #92400e; }
+.status-under-review { background: rgba(59, 130, 246, 0.14); color: #1d4ed8; }
+.status-validated { background: rgba(16, 185, 129, 0.14); color: #047857; }
+.status-rejected { background: rgba(239, 68, 68, 0.14); color: #b91c1c; }
+.status-needs-recheck { background: rgba(168, 85, 247, 0.12); color: #6d28d9; }
+
+.map-loading {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 500;
+    padding: 0.75rem 0.95rem;
+    border-radius: 999px;
+    background: rgba(24, 78, 63, 0.92);
+    color: #f8fafc;
+    font-size: 0.85rem;
+    box-shadow: var(--shadow-soft);
+}
+
+.map-toolbar {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    z-index: 520;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+}
+
+.map-toolbar-button,
+.secondary-button {
+    border: 1px solid rgba(24, 78, 63, 0.16);
+    background: rgba(255, 252, 247, 0.95);
+    color: #12212c;
+    border-radius: 999px;
+    padding: 0.65rem 0.95rem;
+    font-size: 0.84rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-shadow: var(--shadow-soft);
+}
+
+.secondary-button-strong {
+    background: rgba(24, 78, 63, 0.94);
+    color: #f8fafc;
+}
+
+.secondary-button-link {
+    text-decoration: none;
+}
+
+.map-toolbar-button:disabled,
+.secondary-button:disabled {
+    cursor: default;
+    opacity: 0.55;
+}
+
+.map-overlay-state {
+    position: absolute;
+    inset: 1rem 1rem auto auto;
+    z-index: 530;
+    max-width: 22rem;
+    padding: 0.9rem 1rem;
+    border-radius: 1rem;
+    background: rgba(24, 78, 63, 0.94);
+    color: #f8fafc;
+    font-size: 0.88rem;
+    line-height: 1.5;
+    box-shadow: var(--shadow-soft);
+}
+
+.map-overlay-state.is-error {
+    background: rgba(124, 45, 18, 0.95);
+}
+
+.map-overlay-state.is-empty {
+    background: rgba(31, 41, 51, 0.9);
+}
+
+.static-layer-placeholder {
+    position: absolute;
+    top: 4.3rem;
+    left: 1rem;
+    z-index: 510;
+    max-width: 18rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: 1rem;
+    background: rgba(255, 252, 247, 0.9);
+    border: 1px solid var(--line-soft);
+    color: var(--text-soft);
+    font-size: 0.8rem;
+    line-height: 1.45;
+}
+
+.drawer-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+    margin-top: 1rem;
+}
+
+.drawer-grid div {
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.55);
+    padding: 0.8rem;
+}
+
+.drawer-grid span {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.72rem;
+    color: var(--text-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.drawer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 1rem;
+}
+
+.drawer-inline-state {
+    margin: 1rem 0 0;
+    color: var(--text-soft);
+}
+
+.validation-form {
+    margin-top: 1rem;
+}
+
+.priority-pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.38rem 0.75rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.priority-pill-high {
+    background: rgba(234, 88, 12, 0.14);
+    color: #9a3412;
+}
+
+.priority-pill-medium {
+    background: rgba(245, 158, 11, 0.16);
+    color: #92400e;
+}
+
+.priority-pill-low {
+    background: rgba(20, 184, 166, 0.14);
+    color: #0f766e;
+}
+
+.error-banner {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 1rem;
+    color: #7c2d12;
+    background: rgba(254, 215, 170, 0.5);
+    border: 1px solid rgba(249, 115, 22, 0.22);
+}
+
+.success-banner {
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 1rem;
+    color: #065f46;
+    background: rgba(167, 243, 208, 0.45);
+    border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.hotspot-pin {
+    background: transparent;
+    border: none;
+}
+
+.hotspot-pin span {
+    display: block;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, 0.85);
+    border: 3px solid rgba(255, 247, 237, 0.95);
+    box-shadow: 0 0 0 8px rgba(251, 146, 60, 0.12);
+}
+
+.hotspot-pin span[data-priority='high'] {
+    background: rgba(234, 88, 12, 0.9);
+}
+
+.hotspot-pin span[data-priority='medium'] {
+    background: rgba(245, 158, 11, 0.9);
+}
+
+.hotspot-pin span[data-priority='low'] {
+    background: rgba(20, 184, 166, 0.88);
+}
+
+.hotspot-pin span.is-selected {
+    box-shadow: 0 0 0 8px rgba(154, 52, 18, 0.22);
+}
+
+.leaflet-container {
+    font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+.leaflet-popup-content-wrapper,
+.leaflet-popup-tip {
+    background: rgba(255, 251, 245, 0.96);
+}
+
+.popup-card h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #12212c;
+}
+
+.popup-kicker {
+    margin: 0 0 0.3rem;
+    color: var(--text-soft);
+    font-size: 0.68rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+}
+
+.popup-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+    margin-top: 0.85rem;
+}
+
+.popup-grid div {
+    border-radius: 0.9rem;
+    background: rgba(244, 239, 228, 0.7);
+    padding: 0.65rem 0.7rem;
+}
+
+.popup-grid span {
+    display: block;
+    margin-bottom: 0.22rem;
+    color: var(--text-soft);
+    font-size: 0.64rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.popup-grid strong {
+    color: #12212c;
+    font-size: 0.84rem;
+}
+
+.filter-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.8rem;
+}
+
+.field-block span {
+    display: block;
+    margin-bottom: 0.38rem;
+    color: var(--text-soft);
+    font-size: 0.75rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.field-block select,
+.field-block input,
+.field-block textarea {
+    width: 100%;
+    border-radius: 0.95rem;
+    border: 1px solid rgba(91, 100, 112, 0.18);
+    background: rgba(255, 255, 255, 0.75);
+    padding: 0.72rem 0.8rem;
+    color: var(--text-main);
+    outline: none;
+}
+
+.field-block textarea {
+    resize: vertical;
+}
+
+.field-block-full {
+    margin-top: 0.8rem;
+}
+
+.field-checkbox {
+    display: flex;
+    flex-direction: column;
+    justify-content: end;
+}
+
+.field-checkbox input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--brand-accent);
+}
+
+.toggle-list {
+    display: grid;
+    gap: 0.6rem;
+}
+
+.toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    color: var(--text-main);
+}
+
+.toggle-row input {
+    width: 1rem;
+    height: 1rem;
+    accent-color: var(--brand-accent);
+}
+
+.hotspot-list,
+.validation-timeline {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+}
+
+.hotspot-list {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.hotspot-list-empty {
+    color: var(--text-soft);
+    line-height: 1.5;
+}
+
+.hotspot-list-item {
+    width: 100%;
+    display: flex;
+    align-items: start;
+    justify-content: space-between;
+    gap: 0.85rem;
+    text-align: left;
+    border: 1px solid rgba(91, 100, 112, 0.14);
+    border-radius: 1rem;
+    background: rgba(255, 255, 255, 0.62);
+    padding: 0.8rem 0.85rem;
+    cursor: pointer;
+}
+
+.hotspot-list-item.is-selected {
+    border-color: rgba(154, 52, 18, 0.24);
+    background: rgba(254, 243, 199, 0.38);
+}
+
+.hotspot-list-item strong,
+.validation-timeline strong {
+    display: block;
+    color: #12212c;
+}
+
+.hotspot-list-item span,
+.validation-timeline span {
+    color: var(--text-soft);
+    font-size: 0.82rem;
+}
+
+.hotspot-list-item small {
+    color: var(--text-soft);
+    white-space: nowrap;
+}
+
+.validation-timeline {
+    display: grid;
+    gap: 0.85rem;
+}
+
+.validation-timeline li {
+    border-top: 1px solid rgba(91, 100, 112, 0.12);
+    padding-top: 0.85rem;
+}
+
+.validation-timeline li:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.validation-timeline p {
+    margin: 0.38rem 0 0;
+    color: var(--text-main);
+    line-height: 1.5;
+}
+
+.timeline-meta {
+    display: block;
+    margin-top: 0.45rem;
+    color: var(--text-soft);
+}
+
+.timeline-photo-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem;
+    margin-top: 0.6rem;
+}
+
+.timeline-photo-link {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.18rem 0.6rem;
+    background: rgba(59, 130, 246, 0.14);
+    color: #1d4ed8;
+    font-size: 0.76rem;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.photo-preview-card {
+    margin-top: 0.85rem;
+    border-radius: 1rem;
+    border: 1px solid rgba(91, 100, 112, 0.16);
+    background: rgba(255, 255, 255, 0.55);
+    padding: 0.8rem;
+}
+
+.photo-preview-image {
+    width: 100%;
+    max-height: 13rem;
+    object-fit: cover;
+    border-radius: 0.8rem;
+    margin-bottom: 0.55rem;
+}
+
+.validation-photo-grid {
+    display: grid;
+    gap: 0.7rem;
+    margin-top: 1rem;
+}
+
+.validation-photo-item {
+    border-top: 1px solid rgba(91, 100, 112, 0.12);
+    padding-top: 0.75rem;
+}
+
+.validation-photo-item:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.validation-photo-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.85rem;
+}
+
+.validation-photo-thumb {
+    width: 100%;
+    height: 11rem;
+    object-fit: cover;
+    border-radius: 0.9rem;
+    margin-bottom: 0.7rem;
+    background: rgba(244, 239, 228, 0.7);
+}
+
+.validation-photo-meta span,
+.validation-photo-item small {
+    color: var(--text-soft);
+}
+
+.report-list {
+    display: grid;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.report-list-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.85rem;
+    border-top: 1px solid rgba(91, 100, 112, 0.12);
+    padding-top: 0.75rem;
+}
+
+.report-list-item:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.report-list-item strong {
+    display: block;
+    color: #12212c;
+}
+
+.report-list-item span,
+.report-download-link {
+    color: var(--text-soft);
+    font-size: 0.82rem;
+}
+
+.report-download-link {
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.report-modal-shell {
+    padding: 1.25rem;
+}
+
+.report-modal-header h3 {
+    margin: 0;
+    color: #12212c;
+    font-size: 1.2rem;
+}
+
+.report-confirmation-box {
+    margin-top: 1rem;
+    border-radius: 1rem;
+    background: rgba(244, 239, 228, 0.8);
+    border: 1px solid rgba(91, 100, 112, 0.12);
+    padding: 0.95rem 1rem;
+}
+
+.report-confirmation-box strong {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: #12212c;
+}
+
+.report-confirmation-box p {
+    margin: 0;
+    color: var(--text-soft);
+    line-height: 1.5;
+}
+
+.report-modal-actions {
+    display: flex;
+    justify-content: end;
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 1180px) {
+    .metric-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .webgis-layout,
+    .public-layout,
+    .public-hero {
+        grid-template-columns: 1fr;
+    }
+
+    .map-frame {
+        min-height: 30rem;
+    }
+
+    .filter-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 820px) {
+    .desktop-only {
+        display: none;
+    }
+
+    .mobile-menu-trigger {
+        display: inline-flex;
+    }
+
+    .webgis-shell {
+        padding: 1rem;
+    }
+
+    .public-shell {
+        padding: 1rem;
+    }
+
+    .webgis-topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .public-topbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .webgis-select-group {
+        min-width: 0;
+    }
+
+    .map-toolbar {
+        right: 1rem;
+    }
+
+    .map-legend {
+        max-width: calc(100% - 2rem);
+    }
+}
+
+@media (max-width: 640px) {
+    .metric-strip {
+        grid-template-columns: 1fr;
+    }
+
+    .drawer-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .internal-nav {
+        padding: 0.85rem 1rem;
+    }
+
+    .popup-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .panel-heading-row,
+    .hotspot-list-item,
+    .drawer-actions,
+    .report-list-item,
+    .report-modal-actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
