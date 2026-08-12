@@ -56,7 +56,6 @@ class ValidationPhotoApiTest extends TestCase
         );
 
         $validationPhotoId = $response->json('data.id');
-        $storedPath = $response->json('data.stored_path');
 
         $response
             ->assertCreated()
@@ -66,6 +65,7 @@ class ValidationPhotoApiTest extends TestCase
             ->assertJsonPath('data.is_primary', true)
             ->assertJsonPath('data.photo_point.type', 'Point');
 
+        $storedPath = ValidationPhoto::query()->findOrFail($validationPhotoId)->file_path;
         Storage::disk('local')->assertExists($storedPath);
 
         $this->assertDatabaseHas('validation_photos', [

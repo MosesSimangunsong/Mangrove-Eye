@@ -41,7 +41,11 @@ class PublicDashboardApiTest extends TestCase
             ->assertJsonPath('data.type', 'FeatureCollection')
             ->assertJsonPath('data.features.0.properties.is_generalized', true)
             ->assertJsonMissingPath('data.features.0.properties.id')
+            ->assertJsonMissingPath('data.features.0.properties.validation_note')
+            ->assertJsonMissingPath('data.features.0.properties.photos')
+            ->assertJsonMissingPath('data.features.0.properties.centroid')
             ->assertJsonPath('data.features.0.geometry.coordinates.0', 98.46)
-            ->assertJsonPath('data.features.0.geometry.coordinates.1', 4.01);
+            ->assertJsonPath('data.features.0.geometry.coordinates.1', 4.01)
+            ->assertJsonPath('data.features.0.geometry.type', 'Point');
     }
 }

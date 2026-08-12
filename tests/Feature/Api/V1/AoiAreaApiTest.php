@@ -51,7 +51,8 @@ class AoiAreaApiTest extends TestCase
         $storeResponse
             ->assertCreated()
             ->assertJsonPath('success', true)
-            ->assertJsonPath('data.code', 'AOI-KTH-001');
+            ->assertJsonPath('data.code', 'AOI-KTH-001')
+            ->assertJsonMissingPath('data.source_file_path');
 
         $this->actingAs($admin)
             ->getJson('/api/v1/aoi-areas')
@@ -61,7 +62,8 @@ class AoiAreaApiTest extends TestCase
         $this->actingAs($admin)
             ->getJson("/api/v1/aoi-areas/{$aoiId}")
             ->assertOk()
-            ->assertJsonPath('data.name', 'Kawasan KTH Nipah');
+            ->assertJsonPath('data.name', 'Kawasan KTH Nipah')
+            ->assertJsonMissingPath('data.source_file_path');
 
         $this->actingAs($admin)
             ->putJson("/api/v1/aoi-areas/{$aoiId}", [

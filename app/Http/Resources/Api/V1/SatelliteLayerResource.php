@@ -16,7 +16,6 @@ class SatelliteLayerResource extends JsonResource
             'layer_type' => $this->layer_type,
             'period_type' => $this->period_type,
             'storage_type' => $this->storage_type,
-            'file_path' => $this->file_path,
             'tile_url' => $this->tile_url,
             'bbox' => $this->bbox ?? new \stdClass(),
             'visualization_params' => $this->visualization_params ?? new \stdClass(),

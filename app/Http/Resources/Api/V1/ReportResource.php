@@ -17,7 +17,6 @@ class ReportResource extends JsonResource
             'analysis_run_id' => $this->analysis_run_id,
             'title' => $this->title,
             'summary' => $this->summary,
-            'file_path' => $this->file_path,
             'download_url' => route('api.v1.reports.download', $this->resource),
             'status' => $this->status,
             'sensitivity_level' => $this->sensitivity_level,

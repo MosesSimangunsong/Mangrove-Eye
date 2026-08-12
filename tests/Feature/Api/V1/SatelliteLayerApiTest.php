@@ -36,11 +36,13 @@ class SatelliteLayerApiTest extends TestCase
                 'is_public' => false,
             ])
             ->assertCreated()
-            ->assertJsonPath('data.layer_name', 'RGB After');
+            ->assertJsonPath('data.layer_name', 'RGB After')
+            ->assertJsonMissingPath('data.file_path');
 
         $this->actingAs($validator)
             ->getJson("/api/v1/dashboard/layers?analysis_run_id={$analysisRun->id}")
             ->assertOk()
-            ->assertJsonPath('data.0.layer_type', 'rgb_after');
+            ->assertJsonPath('data.0.layer_type', 'rgb_after')
+            ->assertJsonMissingPath('data.0.file_path');
     }
 }

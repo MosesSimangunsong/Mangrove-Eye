@@ -7,11 +7,13 @@ import UpdateProfileInformationForm from './Partials/UpdateProfileInformationFor
 export default function Edit({ mustVerifyEmail, status }) {
     return (
         <AuthenticatedLayout
-            header={
-                <h2 className="text-xl font-semibold leading-tight text-gray-800">
-                    Profile
-                </h2>
-            }
+            title="Profile Settings"
+            description="Perbarui informasi akun internal dan keamanan akses tanpa mengubah konfigurasi operasional sistem."
+            eyebrow="Account"
+            breadcrumbItems={[
+                { label: 'Dashboard', href: '/dashboard' },
+                { label: 'Settings / Profile' },
+            ]}
         >
             <Head title="Profile" />
 

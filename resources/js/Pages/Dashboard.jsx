@@ -1,4 +1,35 @@
 import Modal from '@/Components/Modal';
+import DashboardEmptyState from '@/Components/Dashboard/DashboardEmptyState';
+import DashboardErrorState from '@/Components/Dashboard/DashboardErrorState';
+import DashboardMetricStrip from '@/Components/Dashboard/DashboardMetricStrip';
+import FloatingLegend from '@/Components/Dashboard/FloatingLegend';
+import HotspotDetailDrawer from '@/Components/Dashboard/HotspotDetailDrawer';
+import HotspotFilterPanel from '@/Components/Dashboard/HotspotFilterPanel';
+import LayerControlPanel from '@/Components/Dashboard/LayerControlPanel';
+import {
+    buildValidationPayload,
+    CONFIDENCE_OPTIONS,
+    DEFAULT_ANALYSIS_RUN_REPORT_FORM,
+    DEFAULT_FILTERS,
+    DEFAULT_HOTSPOT_REPORT_FORM,
+    DEFAULT_LAYER_VISIBILITY,
+    DEFAULT_PHOTO_FORM,
+    DEFAULT_VALIDATION_FORM,
+    formatDateTime,
+    formatLabel,
+    formatNumber,
+    formatStatus,
+    getFeatureCentroid,
+    getFeatureId,
+    getValidationHistory,
+    normalizeBoolean,
+    OBSERVED_CONDITION_OPTIONS,
+    PRIORITY_OPTIONS,
+    SENSITIVITY_OPTIONS,
+    STATUS_OPTIONS,
+    toDateTimeLocalValue,
+    VALIDATION_STATUS_OPTIONS,
+} from '@/Components/Dashboard/dashboardHelpers';
 import WebGISMap from '@/Components/WebGIS/WebGISMap';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {
@@ -14,199 +45,6 @@ import {
 } from '@/lib/api';
 import { Head, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useState } from 'react';
-
-const PRIORITY_OPTIONS = [
-    { value: 'all', label: 'Semua prioritas' },
-    { value: 'high', label: 'High' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'low', label: 'Low' },
-];
-
-const STATUS_OPTIONS = [
-    { value: 'all', label: 'Semua status' },
-    { value: 'detected', label: 'Detected' },
-    { value: 'under_review', label: 'Under review' },
-    { value: 'validated', label: 'Validated' },
-    { value: 'rejected', label: 'Rejected' },
-    { value: 'needs_recheck', label: 'Needs recheck' },
-];
-
-const VALIDATION_STATUS_OPTIONS = STATUS_OPTIONS.filter(({ value }) => value !== 'all' && value !== 'detected');
-
-const CONFIDENCE_OPTIONS = [
-    { value: '', label: 'Pilih confidence' },
-    { value: 'low', label: 'Low' },
-    { value: 'medium', label: 'Medium' },
-    { value: 'high', label: 'High' },
-];
-
-const OBSERVED_CONDITION_OPTIONS = [
-    { value: '', label: 'Pilih kondisi lapangan' },
-    { value: 'mangrove_cut', label: 'Mangrove cut' },
-    { value: 'oil_palm_planted', label: 'Oil palm planted' },
-    { value: 'open_land', label: 'Open land' },
-    { value: 'water_tide', label: 'Water tide' },
-    { value: 'pond_or_aquaculture', label: 'Pond or aquaculture' },
-    { value: 'cloud_shadow', label: 'Cloud shadow' },
-    { value: 'unknown', label: 'Unknown' },
-    { value: 'other', label: 'Other' },
-];
-
-const SENSITIVITY_OPTIONS = [
-    { value: 'restricted', label: 'Restricted' },
-    { value: 'internal', label: 'Internal' },
-    { value: 'public', label: 'Public' },
-];
-
-const DEFAULT_FILTERS = {
-    priority: 'all',
-    validationStatus: 'all',
-    detectedFrom: '',
-    detectedTo: '',
-    areaMin: '',
-    areaMax: '',
-};
-
-const DEFAULT_LAYER_VISIBILITY = {
-    aoi: true,
-    polygons: true,
-    centroids: true,
-    selected: true,
-    staticPlaceholder: true,
-};
-
-const DEFAULT_VALIDATION_FORM = {
-    validation_status: 'under_review',
-    validation_note: '',
-    observed_condition: '',
-    confidence_level: '',
-    visited_at: '',
-    is_geotagged: false,
-    sensitivity_level: 'restricted',
-    photo_lat: '',
-    photo_lng: '',
-};
-
-const DEFAULT_PHOTO_FORM = {
-    caption: '',
-    taken_at: '',
-    is_primary: true,
-    sensitivity_level: 'restricted',
-    photo_lat: '',
-    photo_lng: '',
-};
-
-const DEFAULT_HOTSPOT_REPORT_FORM = {
-    title: '',
-    include_validation_photos: true,
-    include_precise_coordinates: false,
-};
-
-const DEFAULT_ANALYSIS_RUN_REPORT_FORM = {
-    title: '',
-    include_hotspot_summary: true,
-    include_validation_summary: true,
-};
-
-function MetricTile({ label, value, tone = 'default', caption = '' }) {
-    return (
-        <div className={`metric-tile metric-tile-${tone}`}>
-            <p>{label}</p>
-            <strong>{value}</strong>
-            {caption ? <small>{caption}</small> : null}
-        </div>
-    );
-}
-
-function formatStatus(value) {
-    if (!value) {
-        return '-';
-    }
-
-    return value.replaceAll('_', ' ');
-}
-
-function formatLabel(value) {
-    return formatStatus(value).replace(/\b\w/g, (char) => char.toUpperCase());
-}
-
-function formatNumber(value, digits = 2) {
-    if (value == null || value === '') {
-        return '-';
-    }
-
-    return Number(value).toFixed(digits);
-}
-
-function formatDateTime(value) {
-    if (!value) {
-        return '-';
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return value;
-    }
-
-    return new Intl.DateTimeFormat('id-ID', {
-        dateStyle: 'medium',
-        timeStyle: 'short',
-    }).format(date);
-}
-
-function toDateTimeLocalValue(value) {
-    if (!value) {
-        return '';
-    }
-
-    const date = new Date(value);
-
-    if (Number.isNaN(date.getTime())) {
-        return '';
-    }
-
-    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-
-    return local.toISOString().slice(0, 16);
-}
-
-function getFeatureId(feature) {
-    return feature?.properties?.id ?? null;
-}
-
-function getFeatureCentroid(feature, detail) {
-    return detail?.centroid?.coordinates ?? feature?.properties?.centroid?.coordinates ?? null;
-}
-
-function getValidationHistory(detail) {
-    return Array.isArray(detail?.validations) ? detail.validations : [];
-}
-
-function normalizeBoolean(value) {
-    return value === true || value === '1' || value === 1;
-}
-
-function buildValidationPayload(form) {
-    const payload = {
-        validation_status: form.validation_status,
-        validation_note: form.validation_note || null,
-        observed_condition: form.observed_condition || null,
-        confidence_level: form.confidence_level || null,
-        visited_at: form.visited_at ? new Date(form.visited_at).toISOString() : null,
-        is_geotagged: normalizeBoolean(form.is_geotagged),
-        sensitivity_level: form.sensitivity_level,
-    };
-
-    if (form.photo_lat !== '' && form.photo_lng !== '') {
-        payload.validation_point = {
-            type: 'Point',
-            coordinates: [Number(form.photo_lng), Number(form.photo_lat)],
-        };
-    }
-
-    return payload;
-}
 
 export default function Dashboard() {
     const { auth } = usePage().props;
@@ -935,7 +773,13 @@ export default function Dashboard() {
     }
 
     return (
-        <AuthenticatedLayout>
+        <AuthenticatedLayout
+            title="WebGIS Deteksi Dini Mangrove"
+            description="Review hotspot berbasis peta dengan filter cepat, detail indeks, validasi lapangan, dan unggah bukti foto dalam satu workspace internal."
+            eyebrow="MANGROVE-EYE Internal"
+            breadcrumbItems={[{ label: 'Dashboard' }]}
+            pageHeaderClassName="webgis-page-header"
+        >
             <Head title="WebGIS Dashboard" />
 
             <div className="webgis-shell">
@@ -969,30 +813,14 @@ export default function Dashboard() {
                     </div>
                 </section>
 
-                <section className="metric-strip">
-                    <MetricTile
-                        label="Hotspot Tampil"
-                        value={filteredFeatures.length}
-                        tone="ember"
-                        caption={`Dari ${allFeatures.length} hotspot pada run aktif`}
-                    />
-                    <MetricTile
-                        label="Area Tampil"
-                        value={`${formatNumber(visibleAreaTotal, 2)} ha`}
-                        tone="teal"
-                        caption="Akumulasi area hotspot yang lolos filter"
-                    />
-                    <MetricTile
-                        label="Validated"
-                        value={validatedCount}
-                        caption="Jumlah hotspot berstatus validated"
-                    />
-                    <MetricTile
-                        label="High Priority"
-                        value={highPriorityCount}
-                        caption="Fokus recheck paling mendesak"
-                    />
-                </section>
+                <DashboardMetricStrip
+                    filteredCount={filteredFeatures.length}
+                    allCount={allFeatures.length}
+                    visibleAreaTotal={visibleAreaTotal}
+                    validatedCount={validatedCount}
+                    highPriorityCount={highPriorityCount}
+                    formatNumber={formatNumber}
+                />
 
                 <section className="webgis-layout">
                     <aside className="left-panel">
@@ -1050,183 +878,25 @@ export default function Dashboard() {
                             </div>
                         </div>
 
-                        <div className="panel-card">
-                            <div className="panel-heading-row">
-                                <div>
-                                    <p className="panel-kicker">Filter Hotspot</p>
-                                    <h3>Refine tampilan peta</h3>
-                                </div>
-                                <button
-                                    type="button"
-                                    className="panel-action-link"
-                                    onClick={resetFilters}
-                                    disabled={!hasNonDefaultFilters}
-                                >
-                                    Reset
-                                </button>
-                            </div>
+                        <HotspotFilterPanel
+                            filters={filters}
+                            handleFilterChange={handleFilterChange}
+                            resetFilters={resetFilters}
+                            hasNonDefaultFilters={hasNonDefaultFilters}
+                            filteredFeatures={filteredFeatures}
+                            selectedHotspotId={selectedHotspotId}
+                            setSelectedHotspotId={setSelectedHotspotId}
+                            PRIORITY_OPTIONS={PRIORITY_OPTIONS}
+                            STATUS_OPTIONS={STATUS_OPTIONS}
+                            formatNumber={formatNumber}
+                            formatStatus={formatStatus}
+                        />
 
-                            <div className="filter-grid">
-                                <label className="field-block">
-                                    <span>Priority</span>
-                                    <select
-                                        value={filters.priority}
-                                        onChange={(event) => handleFilterChange('priority', event.target.value)}
-                                    >
-                                        {PRIORITY_OPTIONS.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-
-                                <label className="field-block">
-                                    <span>Status</span>
-                                    <select
-                                        value={filters.validationStatus}
-                                        onChange={(event) =>
-                                            handleFilterChange('validationStatus', event.target.value)
-                                        }
-                                    >
-                                        {STATUS_OPTIONS.map((option) => (
-                                            <option key={option.value} value={option.value}>
-                                                {option.label}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-
-                                <label className="field-block">
-                                    <span>Tanggal deteksi dari</span>
-                                    <input
-                                        type="date"
-                                        value={filters.detectedFrom}
-                                        onChange={(event) =>
-                                            handleFilterChange('detectedFrom', event.target.value)
-                                        }
-                                    />
-                                </label>
-
-                                <label className="field-block">
-                                    <span>Tanggal deteksi sampai</span>
-                                    <input
-                                        type="date"
-                                        value={filters.detectedTo}
-                                        onChange={(event) =>
-                                            handleFilterChange('detectedTo', event.target.value)
-                                        }
-                                    />
-                                </label>
-
-                                <label className="field-block">
-                                    <span>Luas minimum (ha)</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={filters.areaMin}
-                                        onChange={(event) => handleFilterChange('areaMin', event.target.value)}
-                                        placeholder="0.50"
-                                    />
-                                </label>
-
-                                <label className="field-block">
-                                    <span>Luas maksimum (ha)</span>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        value={filters.areaMax}
-                                        onChange={(event) => handleFilterChange('areaMax', event.target.value)}
-                                        placeholder="5.00"
-                                    />
-                                </label>
-                            </div>
-                        </div>
-
-                        <div className="panel-card">
-                            <p className="panel-kicker">Layer Control</p>
-                            <div className="toggle-list">
-                                {Object.entries({
-                                    aoi: 'AOI layer',
-                                    polygons: 'Hotspot polygon',
-                                    centroids: 'Hotspot centroid',
-                                    selected: 'Selected highlight',
-                                    staticPlaceholder: 'Static map placeholder',
-                                }).map(([key, label]) => (
-                                    <label key={key} className="toggle-row">
-                                        <input
-                                            type="checkbox"
-                                            checked={layerVisibility[key]}
-                                            onChange={() => toggleLayer(key)}
-                                        />
-                                        <span>{label}</span>
-                                    </label>
-                                ))}
-                            </div>
-
-                            <div className="panel-divider" />
-
-                            <p className="panel-kicker">Metadata Layer</p>
-                            <ul className="layer-list">
-                                {analysisContext.layers.length === 0 ? (
-                                    <li>Belum ada metadata layer untuk analysis run ini.</li>
-                                ) : (
-                                    analysisContext.layers.map((layer) => (
-                                        <li key={layer.id}>
-                                            <strong>{layer.layer_name}</strong>
-                                            <span>{layer.layer_type} - {layer.storage_type}</span>
-                                        </li>
-                                    ))
-                                )}
-                            </ul>
-                        </div>
-
-                        <div className="panel-card">
-                            <div className="panel-heading-row">
-                                <div>
-                                    <p className="panel-kicker">Hotspot Terfilter</p>
-                                    <h3>{filteredFeatures.length} hotspot terlihat</h3>
-                                </div>
-                                <span className="panel-caption">Klik item untuk sinkron ke peta</span>
-                            </div>
-
-                            <ul className="hotspot-list">
-                                {filteredFeatures.length === 0 ? (
-                                    <li className="hotspot-list-empty">
-                                        Tidak ada hotspot yang cocok dengan filter saat ini.
-                                    </li>
-                                ) : (
-                                    filteredFeatures.map((feature) => {
-                                        const properties = feature.properties ?? {};
-                                        const isSelected = String(getFeatureId(feature)) === String(selectedHotspotId);
-
-                                        return (
-                                            <li key={properties.id ?? properties.hotspot_code}>
-                                                <button
-                                                    type="button"
-                                                    className={`hotspot-list-item ${isSelected ? 'is-selected' : ''}`}
-                                                    onClick={() => setSelectedHotspotId(getFeatureId(feature))}
-                                                >
-                                                    <div>
-                                                        <strong>{properties.hotspot_code ?? 'Tanpa kode'}</strong>
-                                                        <span>
-                                                            {formatStatus(properties.validation_status)} - {properties.priority ?? '-'}
-                                                        </span>
-                                                    </div>
-                                                    <small>
-                                                        {properties.area_ha != null
-                                                            ? `${formatNumber(properties.area_ha, 2)} ha`
-                                                            : 'Tanpa luas'}
-                                                    </small>
-                                                </button>
-                                            </li>
-                                        );
-                                    })
-                                )}
-                            </ul>
-                        </div>
+                        <LayerControlPanel
+                            layerVisibility={layerVisibility}
+                            toggleLayer={toggleLayer}
+                            layers={analysisContext.layers}
+                        />
                     </aside>
 
                     <div className="map-stage">
@@ -1258,49 +928,7 @@ export default function Dashboard() {
                                 </button>
                             </div>
 
-                            <div className="map-legend final">
-                                <strong>Legend</strong>
-                                <div className="legend-section">
-                                    <span className="legend-label">Layer utama</span>
-                                    <div className="legend-row">
-                                        <span className="legend-swatch layer-aoi" />
-                                        <span>AOI</span>
-                                    </div>
-                                    <div className="legend-row">
-                                        <span className="legend-swatch layer-selected" />
-                                        <span>Hotspot dipilih</span>
-                                    </div>
-                                </div>
-                                <div className="legend-section">
-                                    <span className="legend-label">Priority</span>
-                                    <div className="legend-row">
-                                        <span className="legend-swatch priority-high-swatch" />
-                                        <span>High</span>
-                                    </div>
-                                    <div className="legend-row">
-                                        <span className="legend-swatch priority-medium-swatch" />
-                                        <span>Medium</span>
-                                    </div>
-                                    <div className="legend-row">
-                                        <span className="legend-swatch priority-low-swatch" />
-                                        <span>Low</span>
-                                    </div>
-                                </div>
-                                <div className="legend-section">
-                                    <span className="legend-label">Status</span>
-                                    {STATUS_OPTIONS.filter(({ value }) => value !== 'all').map((option) => (
-                                        <div key={option.value} className="legend-row">
-                                            <span className={`legend-chip status-${option.value.replaceAll('_', '-')}`}>
-                                                {option.label}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                                <p className="legend-note">
-                                    Hotspot adalah indikasi awal perubahan tutupan mangrove,
-                                    bukan vonis hukum atau kesimpulan akhir lapangan.
-                                </p>
-                            </div>
+                            <FloatingLegend statusOptions={STATUS_OPTIONS} />
 
                             {layerVisibility.staticPlaceholder ? (
                                 <div className="static-layer-placeholder">
@@ -1312,569 +940,63 @@ export default function Dashboard() {
                                 <div className="map-overlay-state">Memuat hotspot dan layer analysis run...</div>
                             ) : null}
 
-                            {!contextLoading && error ? (
-                                <div className="map-overlay-state is-error">{error}</div>
-                            ) : null}
+                            {!contextLoading && error ? <DashboardErrorState message={error} /> : null}
 
                             {!contextLoading && !error && filteredFeatures.length === 0 ? (
-                                <div className="map-overlay-state is-empty">
-                                    Tidak ada hotspot yang tampil. Coba ubah filter atau pilih analysis run lain.
-                                </div>
+                                <DashboardEmptyState message="Tidak ada hotspot yang tampil. Coba ubah filter atau pilih analysis run lain." />
                             ) : null}
                         </div>
                     </div>
 
-                    <aside className="right-drawer">
-                        <div className="drawer-card">
-                            <div className="panel-heading-row">
-                                <div>
-                                    <p className="panel-kicker">Hotspot Detail</p>
-                                    <h2>{selectedFeatureProperties.hotspot_code ?? 'Belum dipilih'}</h2>
-                                </div>
-                                {selectedFeatureProperties.priority ? (
-                                    <span className={`priority-pill priority-pill-${selectedFeatureProperties.priority}`}>
-                                        {selectedFeatureProperties.priority}
-                                    </span>
-                                ) : null}
-                            </div>
-
-                            <p className="drawer-muted">
-                                Klik polygon atau centroid hotspot pada peta untuk melihat detail lebih lengkap dan memulai validasi.
-                            </p>
-
-                            {detailLoading ? <p className="drawer-inline-state">Memuat detail hotspot...</p> : null}
-                            {detailError ? <p className="error-banner">{detailError}</p> : null}
-
-                            <div className="drawer-grid">
-                                <div>
-                                    <span>ID Hotspot</span>
-                                    <strong>{selectedDetail.id ?? selectedFeatureProperties.id ?? '-'}</strong>
-                                </div>
-                                <div>
-                                    <span>Status</span>
-                                    <strong>{formatStatus(selectedDetail.validation_status ?? selectedFeatureProperties.validation_status)}</strong>
-                                </div>
-                                <div>
-                                    <span>Luas</span>
-                                    <strong>
-                                        {selectedDetail.area_ha != null || selectedFeatureProperties.area_ha != null
-                                            ? `${formatNumber(selectedDetail.area_ha ?? selectedFeatureProperties.area_ha, 2)} ha`
-                                            : '-'}
-                                    </strong>
-                                </div>
-                                <div>
-                                    <span>Analysis Run</span>
-                                    <strong>{selectedDetail.analysis_run?.name ?? selectedRun?.name ?? '-'}</strong>
-                                </div>
-                                <div>
-                                    <span>Centroid Latitude</span>
-                                    <strong>{centroidCoordinates ? formatNumber(centroidCoordinates[1], 6) : '-'}</strong>
-                                </div>
-                                <div>
-                                    <span>Centroid Longitude</span>
-                                    <strong>{centroidCoordinates ? formatNumber(centroidCoordinates[0], 6) : '-'}</strong>
-                                </div>
-                                <div>
-                                    <span>Detected At</span>
-                                    <strong>{formatDateTime(selectedDetail.detected_at ?? selectedFeatureProperties.detected_at)}</strong>
-                                </div>
-                                <div>
-                                    <span>Created At</span>
-                                    <strong>{formatDateTime(selectedDetail.created_at)}</strong>
-                                </div>
-                                <div>
-                                    <span>MVI Before</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.mvi_before, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>MVI After</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.mvi_after, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>MVI Delta</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.mvi_delta ?? selectedFeatureProperties.mvi_delta, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>CMRI Before</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.cmri_before, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>CMRI After</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.cmri_after, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>CMRI Delta</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.cmri_delta ?? selectedFeatureProperties.cmri_delta, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>NDVI Delta</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.ndvi_delta, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>NDWI Delta</span>
-                                    <strong>{formatNumber(selectedDetail.indices?.ndwi_delta, 3)}</strong>
-                                </div>
-                                <div>
-                                    <span>Hotspot Type</span>
-                                    <strong>{selectedDetail.properties?.hotspot_type ?? '-'}</strong>
-                                </div>
-                                <div>
-                                    <span>Detection Method</span>
-                                    <strong>{selectedDetail.properties?.detection_method ?? '-'}</strong>
-                                </div>
-                                <div>
-                                    <span>Source</span>
-                                    <strong>{selectedDetail.properties?.source ?? '-'}</strong>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="drawer-card">
-                            <div className="panel-heading-row">
-                                <div>
-                                    <p className="panel-kicker">Report Action</p>
-                                    <h3>Laporan PDF hotspot</h3>
-                                </div>
-                                <span className="panel-caption">
-                                    {canExportReport ? 'Internal only' : 'Perlu permission export_report'}
-                                </span>
-                            </div>
-
-                            <p className="drawer-caption">
-                                PDF ini bersifat indikasi awal untuk kebutuhan advokasi internal dan tetap membutuhkan verifikasi lanjutan.
-                            </p>
-
-                            <div className="drawer-actions">
-                                <button
-                                    type="button"
-                                    className="secondary-button secondary-button-strong"
-                                    onClick={() => setReportModal({ open: true, type: 'hotspot' })}
-                                    disabled={!selectedHotspotId || !canExportReport}
-                                >
-                                    Generate PDF Report
-                                </button>
-                                {hotspotReports[0]?.download_url ? (
-                                    <a
-                                        href={hotspotReports[0].download_url}
-                                        className="secondary-button secondary-button-link"
-                                    >
-                                        Download Latest Report
-                                    </a>
-                                ) : null}
-                            </div>
-
-                            {!canExportReport ? (
-                                <p className="drawer-caption">
-                                    Akun ini belum memiliki permission `export_report`.
-                                </p>
-                            ) : null}
-                            {reportMessage ? <p className="success-banner">{reportMessage}</p> : null}
-                            {reportError ? <p className="error-banner">{reportError}</p> : null}
-
-                            {reportLoading ? (
-                                <p className="drawer-inline-state">Memuat daftar report hotspot...</p>
-                            ) : hotspotReports.length ? (
-                                <div className="report-list">
-                                    {hotspotReports.slice(0, 3).map((report) => (
-                                        <article key={report.id} className="report-list-item">
-                                            <div>
-                                                <strong>{report.title}</strong>
-                                                <span>
-                                                    {formatDateTime(report.generated_at)} - {report.report_code}
-                                                </span>
-                                            </div>
-                                            <a href={report.download_url} className="report-download-link">
-                                                Download PDF
-                                            </a>
-                                        </article>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="drawer-caption">Belum ada report hotspot yang dibuat.</p>
-                            )}
-                        </div>
-
-                        <div className="drawer-card">
-                            <div className="panel-heading-row">
-                                <div>
-                                    <p className="panel-kicker">Field Validation</p>
-                                    <h3>{validationMode === 'update' ? 'Update validasi Anda' : 'Tambah validasi baru'}</h3>
-                                </div>
-                                <span className="panel-caption">
-                                    {editableValidation ? 'Draft Anda ditemukan' : 'Belum ada draft milik Anda'}
-                                </span>
-                            </div>
-
-                            <form className="validation-form" onSubmit={handleSubmitValidation}>
-                                <div className="filter-grid">
-                                    <label className="field-block">
-                                        <span>Status validasi</span>
-                                        <select
-                                            value={validationForm.validation_status}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('validation_status', event.target.value)
-                                            }
-                                        >
-                                            {VALIDATION_STATUS_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Confidence</span>
-                                        <select
-                                            value={validationForm.confidence_level}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('confidence_level', event.target.value)
-                                            }
-                                        >
-                                            {CONFIDENCE_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Observed condition</span>
-                                        <select
-                                            value={validationForm.observed_condition}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('observed_condition', event.target.value)
-                                            }
-                                        >
-                                            {OBSERVED_CONDITION_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Sensitivity</span>
-                                        <select
-                                            value={validationForm.sensitivity_level}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('sensitivity_level', event.target.value)
-                                            }
-                                        >
-                                            {SENSITIVITY_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Visited at</span>
-                                        <input
-                                            type="datetime-local"
-                                            value={validationForm.visited_at}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('visited_at', event.target.value)
-                                            }
-                                        />
-                                    </label>
-
-                                    <label className="field-block field-checkbox">
-                                        <span>Geotag</span>
-                                        <input
-                                            type="checkbox"
-                                            checked={normalizeBoolean(validationForm.is_geotagged)}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('is_geotagged', event.target.checked)
-                                            }
-                                        />
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Latitude validasi</span>
-                                        <input
-                                            type="number"
-                                            step="0.000001"
-                                            value={validationForm.photo_lat}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('photo_lat', event.target.value)
-                                            }
-                                            placeholder="4.012345"
-                                        />
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Longitude validasi</span>
-                                        <input
-                                            type="number"
-                                            step="0.000001"
-                                            value={validationForm.photo_lng}
-                                            onChange={(event) =>
-                                                handleValidationFormChange('photo_lng', event.target.value)
-                                            }
-                                            placeholder="98.456789"
-                                        />
-                                    </label>
-                                </div>
-
-                                <label className="field-block field-block-full">
-                                    <span>Catatan lapangan</span>
-                                    <textarea
-                                        rows="4"
-                                        value={validationForm.validation_note}
-                                        onChange={(event) =>
-                                            handleValidationFormChange('validation_note', event.target.value)
-                                        }
-                                        placeholder="Ringkasan temuan lapangan, kondisi lokasi, dan konteks tambahan."
-                                    />
-                                </label>
-
-                                <div className="drawer-actions">
-                                    <button
-                                        type="button"
-                                        className="secondary-button"
-                                        onClick={() => handleUseBrowserLocation('validation')}
-                                        disabled={locating || !canValidateHotspot}
-                                    >
-                                        {locating ? 'Mengambil lokasi...' : 'Ambil Lokasi Browser'}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="secondary-button secondary-button-strong"
-                                        disabled={!selectedHotspotId || submittingValidation || !canValidateHotspot}
-                                    >
-                                        {submittingValidation
-                                            ? 'Menyimpan...'
-                                            : validationMode === 'update'
-                                                ? 'Update Validasi'
-                                                : 'Simpan Validasi'}
-                                    </button>
-                                </div>
-
-                                {!canValidateHotspot ? (
-                                    <p className="drawer-caption">
-                                        Akun ini belum memiliki permission `validate_hotspot`, jadi form hanya tampil sebagai referensi.
-                                    </p>
-                                ) : null}
-                                {validationMessage ? <p className="success-banner">{validationMessage}</p> : null}
-                                {validationError ? <p className="error-banner">{validationError}</p> : null}
-                            </form>
-                        </div>
-
-                        <div className="drawer-card">
-                            <div className="panel-heading-row">
-                                <div>
-                                    <p className="panel-kicker">Validation Photos</p>
-                                    <h3>Unggah bukti lapangan</h3>
-                                </div>
-                                <span className="panel-caption">
-                                    {canUploadPhoto ? 'Terkait validasi aktif' : 'Simpan validasi terlebih dahulu'}
-                                </span>
-                            </div>
-
-                            <form className="validation-form" onSubmit={handlePhotoUpload}>
-                                <label className="field-block field-block-full">
-                                    <span>Pilih foto</span>
-                                    <input
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp"
-                                        onChange={(event) => setPhotoFile(event.target.files?.[0] ?? null)}
-                                    />
-                                </label>
-
-                                {photoPreviewUrl ? (
-                                    <div className="photo-preview-card">
-                                        <img src={photoPreviewUrl} alt="Preview foto validasi" className="photo-preview-image" />
-                                        <small>{photoFile?.name}</small>
-                                    </div>
-                                ) : null}
-
-                                <div className="filter-grid">
-                                    <label className="field-block">
-                                        <span>Caption</span>
-                                        <input
-                                            type="text"
-                                            value={photoForm.caption}
-                                            onChange={(event) => handlePhotoFormChange('caption', event.target.value)}
-                                            placeholder="Contoh: bekas pembukaan lahan"
-                                        />
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Taken at</span>
-                                        <input
-                                            type="datetime-local"
-                                            value={photoForm.taken_at}
-                                            onChange={(event) => handlePhotoFormChange('taken_at', event.target.value)}
-                                        />
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Sensitivity</span>
-                                        <select
-                                            value={photoForm.sensitivity_level}
-                                            onChange={(event) =>
-                                                handlePhotoFormChange('sensitivity_level', event.target.value)
-                                            }
-                                        >
-                                            {SENSITIVITY_OPTIONS.map((option) => (
-                                                <option key={option.value} value={option.value}>
-                                                    {option.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </label>
-
-                                    <label className="field-block field-checkbox">
-                                        <span>Primary photo</span>
-                                        <input
-                                            type="checkbox"
-                                            checked={normalizeBoolean(photoForm.is_primary)}
-                                            onChange={(event) =>
-                                                handlePhotoFormChange('is_primary', event.target.checked)
-                                            }
-                                        />
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Photo latitude</span>
-                                        <input
-                                            type="number"
-                                            step="0.000001"
-                                            value={photoForm.photo_lat}
-                                            onChange={(event) => handlePhotoFormChange('photo_lat', event.target.value)}
-                                            placeholder="4.012345"
-                                        />
-                                    </label>
-
-                                    <label className="field-block">
-                                        <span>Photo longitude</span>
-                                        <input
-                                            type="number"
-                                            step="0.000001"
-                                            value={photoForm.photo_lng}
-                                            onChange={(event) => handlePhotoFormChange('photo_lng', event.target.value)}
-                                            placeholder="98.456789"
-                                        />
-                                    </label>
-                                </div>
-
-                                <div className="drawer-actions">
-                                    <button
-                                        type="button"
-                                        className="secondary-button"
-                                        onClick={() => handleUseBrowserLocation('photo')}
-                                        disabled={locating || !canValidateHotspot}
-                                    >
-                                        {locating ? 'Mengambil lokasi...' : 'Gunakan Lokasi Browser'}
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        className="secondary-button secondary-button-strong"
-                                        disabled={!canUploadPhoto || !photoFile || uploadingPhoto}
-                                    >
-                                        {uploadingPhoto ? 'Mengunggah...' : 'Upload Foto'}
-                                    </button>
-                                </div>
-
-                                {photoMessage ? <p className="success-banner">{photoMessage}</p> : null}
-                                {photoError ? <p className="error-banner">{photoError}</p> : null}
-                            </form>
-
-                            {allValidationPhotos.length ? (
-                                <div className="validation-photo-grid">
-                                    {allValidationPhotos.map((photo) => (
-                                        <article key={photo.id} className="validation-photo-item">
-                                            <img
-                                                src={photo.file_url}
-                                                alt={photo.caption || photo.original_filename}
-                                                className="validation-photo-thumb"
-                                            />
-                                            <div className="validation-photo-meta">
-                                                <strong>{photo.caption || photo.original_filename}</strong>
-                                                <span>{formatDateTime(photo.taken_at || photo.created_at)}</span>
-                                            </div>
-                                            <small>
-                                                {formatLabel(photo.validation_status)} - {photo.file_name} - {formatLabel(photo.sensitivity_level)}
-                                            </small>
-                                        </article>
-                                    ))}
-                                </div>
-                            ) : (
-                                <p className="drawer-caption">Belum ada foto validasi yang tersimpan untuk hotspot ini.</p>
-                            )}
-                        </div>
-
-                        <div className="drawer-card">
-                            <p className="panel-kicker">Riwayat Validasi</p>
-                            {validationHistory.length === 0 ? (
-                                <p className="drawer-muted">
-                                    Belum ada riwayat validasi yang tersedia untuk hotspot ini.
-                                </p>
-                            ) : (
-                                <ul className="validation-timeline">
-                                    {validationHistory.map((validation) => (
-                                        <li key={validation.id}>
-                                            <strong>{formatStatus(validation.validation_status)}</strong>
-                                            <span>
-                                                {validation.validator?.name ?? 'Validator internal'} - {formatDateTime(validation.visited_at ?? validation.created_at)}
-                                            </span>
-                                            <p>{validation.validation_note ?? 'Belum ada catatan validasi.'}</p>
-                                            <small className="timeline-meta">
-                                                {validation.observed_condition
-                                                    ? `${formatLabel(validation.observed_condition)} - `
-                                                    : ''}
-                                                {validation.confidence_level
-                                                    ? `Confidence ${formatLabel(validation.confidence_level)}`
-                                                    : 'Tanpa confidence level'}
-                                            </small>
-                                            {validation.photos?.length ? (
-                                                <div className="timeline-photo-chips">
-                                                    {validation.photos.map((photo) => (
-                                                        <a
-                                                            key={photo.id}
-                                                            href={photo.file_url}
-                                                            target="_blank"
-                                                            rel="noreferrer"
-                                                            className="timeline-photo-link"
-                                                        >
-                                                            {photo.original_filename}
-                                                        </a>
-                                                    ))}
-                                                </div>
-                                            ) : null}
-                                        </li>
-                                    ))}
-                                </ul>
-                            )}
-                        </div>
-
-                        <div className="drawer-card">
-                            <p className="panel-kicker">Status Dashboard</p>
-                            <ul className="status-list">
-                                <li>
-                                    <span>Bootstrap API</span>
-                                    <strong>{loading ? 'Loading' : 'Ready'}</strong>
-                                </li>
-                                <li>
-                                    <span>Run Aktif</span>
-                                    <strong>{selectedRun?.name ?? '-'}</strong>
-                                </li>
-                                <li>
-                                    <span>Hotspot GeoJSON</span>
-                                    <strong>{allFeatures.length} fitur</strong>
-                                </li>
-                                <li>
-                                    <span>Validasi pada hotspot</span>
-                                    <strong>{validationHistory.length}</strong>
-                                </li>
-                            </ul>
-                            {error ? <p className="error-banner">{error}</p> : null}
-                        </div>
-                    </aside>
+                    <HotspotDetailDrawer
+                        selectedFeatureProperties={selectedFeatureProperties}
+                        selectedDetail={selectedDetail}
+                        selectedRun={selectedRun}
+                        centroidCoordinates={centroidCoordinates}
+                        detailLoading={detailLoading}
+                        detailError={detailError}
+                        selectedHotspotId={selectedHotspotId}
+                        canExportReport={canExportReport}
+                        setReportModal={setReportModal}
+                        hotspotReports={hotspotReports}
+                        reportMessage={reportMessage}
+                        reportError={reportError}
+                        reportLoading={reportLoading}
+                        validationMode={validationMode}
+                        editableValidation={editableValidation}
+                        handleSubmitValidation={handleSubmitValidation}
+                        validationForm={validationForm}
+                        handleValidationFormChange={handleValidationFormChange}
+                        VALIDATION_STATUS_OPTIONS={VALIDATION_STATUS_OPTIONS}
+                        CONFIDENCE_OPTIONS={CONFIDENCE_OPTIONS}
+                        OBSERVED_CONDITION_OPTIONS={OBSERVED_CONDITION_OPTIONS}
+                        SENSITIVITY_OPTIONS={SENSITIVITY_OPTIONS}
+                        normalizeBoolean={normalizeBoolean}
+                        locating={locating}
+                        canValidateHotspot={canValidateHotspot}
+                        handleUseBrowserLocation={handleUseBrowserLocation}
+                        submittingValidation={submittingValidation}
+                        validationMessage={validationMessage}
+                        validationError={validationError}
+                        handlePhotoUpload={handlePhotoUpload}
+                        setPhotoFile={setPhotoFile}
+                        photoPreviewUrl={photoPreviewUrl}
+                        photoFile={photoFile}
+                        photoForm={photoForm}
+                        handlePhotoFormChange={handlePhotoFormChange}
+                        canUploadPhoto={canUploadPhoto}
+                        uploadingPhoto={uploadingPhoto}
+                        photoMessage={photoMessage}
+                        photoError={photoError}
+                        allValidationPhotos={allValidationPhotos}
+                        validationHistory={validationHistory}
+                        loading={loading}
+                        allFeatures={allFeatures}
+                        formatStatus={formatStatus}
+                        formatLabel={formatLabel}
+                        formatNumber={formatNumber}
+                        formatDateTime={formatDateTime}
+                    />
                 </section>
             </div>
 

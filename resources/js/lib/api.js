@@ -40,6 +40,75 @@ export async function fetchHotspotDetail(hotspotId) {
     return response.data.data;
 }
 
+export async function fetchAoiAreas(filters = {}) {
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value != null && value !== '' && value !== 'all') {
+            params.append(key, value);
+        }
+    });
+
+    const response = await api.get(
+        `/aoi-areas${params.toString() ? `?${params.toString()}` : ''}`,
+    );
+
+    return {
+        data: response.data.data,
+        meta: response.data.meta ?? {},
+    };
+}
+
+export async function fetchAoiAreaDetail(aoiAreaId) {
+    const response = await api.get(`/aoi-areas/${aoiAreaId}`);
+
+    return response.data.data;
+}
+
+export async function fetchAnalysisRuns(filters = {}) {
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value != null && value !== '' && value !== 'all') {
+            params.append(key, value);
+        }
+    });
+
+    const response = await api.get(
+        `/analysis-runs${params.toString() ? `?${params.toString()}` : ''}`,
+    );
+
+    return {
+        data: response.data.data,
+        meta: response.data.meta ?? {},
+    };
+}
+
+export async function fetchAnalysisRunDetail(analysisRunId) {
+    const response = await api.get(`/analysis-runs/${analysisRunId}`);
+
+    return response.data.data;
+}
+
+export async function fetchHotspots(filters = {}) {
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value != null && value !== '' && value !== 'all') {
+            params.append(key, value);
+        }
+    });
+
+    const response = await api.get(
+        `/hotspots${params.toString() ? `?${params.toString()}` : ''}`,
+    );
+
+    return {
+        data: response.data.data,
+        meta: response.data.meta ?? {},
+    };
+}
+
 export async function fetchPublicDashboardSummary() {
     const response = await api.get('/public/dashboard/summary');
 
@@ -68,6 +137,12 @@ export async function createFieldValidation(hotspotId, payload) {
     return response.data.data;
 }
 
+export async function fetchFieldValidations(hotspotId) {
+    const response = await api.get(`/hotspots/${hotspotId}/field-validations`);
+
+    return response.data.data;
+}
+
 export async function updateFieldValidation(fieldValidationId, payload) {
     const response = await api.put(`/field-validations/${fieldValidationId}`, payload);
 
@@ -88,6 +163,12 @@ export async function uploadValidationPhoto(fieldValidationId, formData) {
     return response.data.data;
 }
 
+export async function fetchValidationPhotos(fieldValidationId) {
+    const response = await api.get(`/field-validations/${fieldValidationId}/photos`);
+
+    return response.data.data;
+}
+
 export async function fetchReports(filters = {}) {
     const params = new URLSearchParams();
 
@@ -99,6 +180,25 @@ export async function fetchReports(filters = {}) {
 
     const response = await api.get(
         `/reports${params.toString() ? `?${params.toString()}` : ''}`,
+    );
+
+    return {
+        data: response.data.data,
+        meta: response.data.meta ?? {},
+    };
+}
+
+export async function fetchGeeImports(analysisRunId, filters = {}) {
+    const params = new URLSearchParams();
+
+    Object.entries(filters).forEach(([key, value]) => {
+        if (value != null && value !== '' && value !== 'all') {
+            params.append(key, value);
+        }
+    });
+
+    const response = await api.get(
+        `/analysis-runs/${analysisRunId}/gee-imports${params.toString() ? `?${params.toString()}` : ''}`,
     );
 
     return {

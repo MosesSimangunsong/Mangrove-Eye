@@ -65,7 +65,6 @@ class DashboardController extends ApiController
                 'layer_type' => $layer->layer_type,
                 'period_type' => $layer->period_type,
                 'storage_type' => $layer->storage_type,
-                'file_path' => $layer->file_path,
                 'tile_url' => $layer->tile_url,
                 'bbox' => $layer->bbox ?? new \stdClass(),
                 'visualization_params' => $layer->visualization_params ?? new \stdClass(),

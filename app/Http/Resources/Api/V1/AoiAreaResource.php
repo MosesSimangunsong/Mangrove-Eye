@@ -27,7 +27,6 @@ class AoiAreaResource extends JsonResource
             'legal_reference' => $this->legal_reference,
             'source_type' => $this->source_type,
             'source_name' => $this->source_name,
-            'source_file_path' => $this->source_file_path,
             'verification_status' => $this->verification_status,
             'sensitivity_level' => $this->sensitivity_level,
             'geometry' => $spatial->geometryFromModel($this->resource, 'geom'),

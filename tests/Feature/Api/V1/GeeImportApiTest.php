@@ -4,6 +4,7 @@ namespace Tests\Feature\Api\V1;
 
 use App\Models\AnalysisRun;
 use App\Models\AoiArea;
+use App\Models\GeeImport;
 use App\Models\Hotspot;
 use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -56,9 +57,11 @@ class GeeImportApiTest extends TestCase
             ->assertJsonPath('data.import_type', 'hotspot_geojson')
             ->assertJsonPath('data.status', 'processed')
             ->assertJsonPath('data.total_features', 2)
-            ->assertJsonPath('data.import_summary.imported_hotspots', 2);
+            ->assertJsonPath('data.import_summary.imported_hotspots', 2)
+            ->assertJsonMissingPath('data.stored_path')
+            ->assertJsonMissingPath('data.file_path');
 
-        $storedPath = $response->json('data.stored_path');
+        $storedPath = GeeImport::query()->firstOrFail()->file_path;
 
         Storage::disk('local')->assertExists($storedPath);
 
@@ -93,7 +96,9 @@ class GeeImportApiTest extends TestCase
             ->getJson("/api/v1/analysis-runs/{$analysisRun->id}/gee-imports")
             ->assertOk()
             ->assertJsonPath('data.0.analysis_run_id', $analysisRun->id)
-            ->assertJsonPath('data.0.total_features', 2);
+            ->assertJsonPath('data.0.total_features', 2)
+            ->assertJsonMissingPath('data.0.stored_path')
+            ->assertJsonMissingPath('data.0.file_path');
     }
 
     public function test_invalid_gee_hotspot_geojson_is_rejected_with_422(): void

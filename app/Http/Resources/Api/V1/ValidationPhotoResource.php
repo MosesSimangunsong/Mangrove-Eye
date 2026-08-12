@@ -17,8 +17,6 @@ class ValidationPhotoResource extends JsonResource
             'field_validation_id' => $this->field_validation_id,
             'original_filename' => $this->file_name,
             'file_name' => $this->file_name,
-            'stored_path' => $this->file_path,
-            'file_path' => $this->file_path,
             'mime_type' => $this->mime_type,
             'file_size' => $this->file_size,
             'file_url' => route('api.v1.validation-photos.show', $this->resource),
