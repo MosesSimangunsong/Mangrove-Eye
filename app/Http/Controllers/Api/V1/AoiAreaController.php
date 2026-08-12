@@ -174,7 +174,8 @@ class AoiAreaController extends ApiController
             foreach ($features as $index => $feature) {
                 $geometry = $feature['geometry'] ?? $feature;
 
-                $aoiArea = AoiArea::create([
+                // Prepare common attributes for insertion
+                $attributes = [
                     'code' => $this->resolveAoiCode($feature, $index),
                     'name' => data_get($feature, 'properties.name', 'Imported AOI '.($index + 1)),
                     'aoi_type' => $validated['aoi_type'],
@@ -185,13 +186,27 @@ class AoiAreaController extends ApiController
                     'source_file_path' => $fileMeta['path'],
                     'verification_status' => $validated['verification_status'] ?? 'draft',
                     'sensitivity_level' => $validated['sensitivity_level'],
-                    'geom' => ! $this->spatialService->isPgsql() ? $geometry : null,
                     'created_by' => $request->user()->id,
-                ]);
+                ];
 
-                if ($this->spatialService->isPgsql()) {
-                    $this->spatialService->persistGeometry($aoiArea, 'geom', $geometry);
+                if (! $this->spatialService->isPgsql()) {
+                    // Non-PGSQL (e.g., array-casted storage) — create with geometry directly
+                    $attributes['geom'] = $geometry;
+
+                    $aoiArea = AoiArea::create($attributes);
+                } else {
+                    // For PGSQL/PostGIS: persist geometry at insert time to avoid NOT NULL constraint failures
+                    // spatialService->databaseValue produces a value suitable for DB insertion (used elsewhere in codebase)
+                    $insertData = $attributes;
+                    $insertData['geom'] = $this->spatialService->databaseValue($geometry);
+
+                    // Use DB table insert to allow raw DB value for geom and obtain inserted id
+                    $id = DB::table('aoi_areas')->insertGetId($insertData);
+
+                    // Load the Eloquent model for the inserted record
+                    $aoiArea = AoiArea::query()->find($id);
                 }
+
                 $imported[] = $aoiArea->fresh();
             }
         });
