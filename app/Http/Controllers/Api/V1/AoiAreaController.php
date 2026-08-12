@@ -74,16 +74,8 @@ class AoiAreaController extends ApiController
             $geometry = $validated['geometry'];
             $attributes = Arr::except($validated, ['geometry']);
             $attributes['created_by'] = $request->user()->id;
-            if (! $this->spatialService->isPgsql()) {
-                $attributes['geom'] = $geometry;
-            }
 
-            $aoiArea = AoiArea::create($attributes);
-            if ($this->spatialService->isPgsql()) {
-                $this->spatialService->persistGeometry($aoiArea, 'geom', $geometry);
-            }
-
-            return $aoiArea;
+            return $this->createAoiArea($attributes, $geometry);
         });
 
         $this->auditLogService->log(
@@ -174,7 +166,8 @@ class AoiAreaController extends ApiController
             foreach ($features as $index => $feature) {
                 $geometry = $feature['geometry'] ?? $feature;
 
-                $aoiArea = AoiArea::create([
+                // Prepare common attributes for insertion
+                $attributes = [
                     'code' => $this->resolveAoiCode($feature, $index),
                     'name' => data_get($feature, 'properties.name', 'Imported AOI '.($index + 1)),
                     'aoi_type' => $validated['aoi_type'],
@@ -185,14 +178,10 @@ class AoiAreaController extends ApiController
                     'source_file_path' => $fileMeta['path'],
                     'verification_status' => $validated['verification_status'] ?? 'draft',
                     'sensitivity_level' => $validated['sensitivity_level'],
-                    'geom' => ! $this->spatialService->isPgsql() ? $geometry : null,
                     'created_by' => $request->user()->id,
-                ]);
+                ];
 
-                if ($this->spatialService->isPgsql()) {
-                    $this->spatialService->persistGeometry($aoiArea, 'geom', $geometry);
-                }
-                $imported[] = $aoiArea->fresh();
+                $imported[] = $this->createAoiArea($attributes, $geometry)->fresh();
             }
         });
 
@@ -228,5 +217,23 @@ class AoiAreaController extends ApiController
         }
 
         return sprintf('AOI-IMP-%s-%03d', now()->format('YmdHis'), $index + 1);
+    }
+
+    private function createAoiArea(array $attributes, array $geometry): AoiArea
+    {
+        if (! $this->spatialService->isPgsql()) {
+            $attributes['geom'] = $geometry;
+
+            return AoiArea::create($attributes);
+        }
+
+        $insertData = $attributes;
+        $insertData['geom'] = $this->spatialService->databaseValue($geometry);
+        $insertData['created_at'] = now();
+        $insertData['updated_at'] = now();
+
+        $id = DB::table('aoi_areas')->insertGetId($insertData);
+
+        return AoiArea::query()->findOrFail($id);
     }
 }
