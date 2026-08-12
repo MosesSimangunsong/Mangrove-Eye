@@ -1,0 +1,28 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "properties": {
+        "code": "AOI-KWALA-SERAPUH-DRAFT-001",
+        "name": "Kwala Serapuh Draft AOI",
+        "status": "draft",
+        "source": "Google Earth Engine script",
+        "source_file": "MangroveEye_Phase3_Outputs/scripts/mangrove_eye_mvp_gee.js",
+        "notes": "Draft AOI extracted verbatim from repository GEE script. Not an official/legal boundary. Use only for local dev, bootstrap, visual QA, baseline."
+      },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [98.435, 4.005],
+            [98.475, 4.005],
+            [98.475, 4.035],
+            [98.435, 4.035],
+            [98.435, 4.005]
+          ]
+        ]
+      }
+    }
+  ]
+}
