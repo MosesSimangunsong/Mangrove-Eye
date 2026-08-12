@@ -74,16 +74,8 @@ class AoiAreaController extends ApiController
             $geometry = $validated['geometry'];
             $attributes = Arr::except($validated, ['geometry']);
             $attributes['created_by'] = $request->user()->id;
-            if (! $this->spatialService->isPgsql()) {
-                $attributes['geom'] = $geometry;
-            }
 
-            $aoiArea = AoiArea::create($attributes);
-            if ($this->spatialService->isPgsql()) {
-                $this->spatialService->persistGeometry($aoiArea, 'geom', $geometry);
-            }
-
-            return $aoiArea;
+            return $this->createAoiArea($attributes, $geometry);
         });
 
         $this->auditLogService->log(
@@ -189,25 +181,7 @@ class AoiAreaController extends ApiController
                     'created_by' => $request->user()->id,
                 ];
 
-                if (! $this->spatialService->isPgsql()) {
-                    // Non-PGSQL (e.g., array-casted storage) — create with geometry directly
-                    $attributes['geom'] = $geometry;
-
-                    $aoiArea = AoiArea::create($attributes);
-                } else {
-                    // For PGSQL/PostGIS: persist geometry at insert time to avoid NOT NULL constraint failures
-                    // spatialService->databaseValue produces a value suitable for DB insertion (used elsewhere in codebase)
-                    $insertData = $attributes;
-                    $insertData['geom'] = $this->spatialService->databaseValue($geometry);
-
-                    // Use DB table insert to allow raw DB value for geom and obtain inserted id
-                    $id = DB::table('aoi_areas')->insertGetId($insertData);
-
-                    // Load the Eloquent model for the inserted record
-                    $aoiArea = AoiArea::query()->find($id);
-                }
-
-                $imported[] = $aoiArea->fresh();
+                $imported[] = $this->createAoiArea($attributes, $geometry)->fresh();
             }
         });
 
@@ -243,5 +217,23 @@ class AoiAreaController extends ApiController
         }
 
         return sprintf('AOI-IMP-%s-%03d', now()->format('YmdHis'), $index + 1);
+    }
+
+    private function createAoiArea(array $attributes, array $geometry): AoiArea
+    {
+        if (! $this->spatialService->isPgsql()) {
+            $attributes['geom'] = $geometry;
+
+            return AoiArea::create($attributes);
+        }
+
+        $insertData = $attributes;
+        $insertData['geom'] = $this->spatialService->databaseValue($geometry);
+        $insertData['created_at'] = now();
+        $insertData['updated_at'] = now();
+
+        $id = DB::table('aoi_areas')->insertGetId($insertData);
+
+        return AoiArea::query()->findOrFail($id);
     }
 }
